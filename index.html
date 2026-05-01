@@ -489,6 +489,96 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 .info-item span{font-size:13px;color:var(--text);font-weight:600}
 .divider{height:1px;background:var(--border-light);margin:16px 0}
 .dir-block-footer{padding:10px 16px;border-top:1px solid var(--border-light);text-align:center}
+
+/* ── RUTA AMPLIADA ── */
+.ruta-order-card{
+  background:var(--surface2);border:1px solid var(--border-light);
+  border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;
+}
+.ruta-order-card:last-child{margin-bottom:0}
+.ruta-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.ruta-card-code{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--goma-blue)}
+.ruta-card-desc{font-size:14px;color:var(--text-mid);margin-top:2px}
+.ruta-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--text-muted)}
+.ruta-card-meta strong{color:var(--text-mid)}
+.ruta-send-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ruta-send-row input{
+  flex:1;min-width:80px;max-width:120px;
+  padding:12px 14px;font-size:18px;font-weight:700;
+  border:2px solid var(--border);border-radius:var(--radius);
+  background:#fff;color:var(--text);text-align:center;
+  font-family:'Nunito',sans-serif;
+  -moz-appearance:textfield;
+}
+.ruta-send-row input:focus{border-color:var(--goma-blue);box-shadow:0 0 0 3px rgba(13,32,150,0.1)}
+.ruta-send-row input::-webkit-outer-spin-button,
+.ruta-send-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ruta-obs-input{
+  width:100%;padding:9px 12px;font-size:13px;
+  border:1.5px solid var(--border);border-radius:var(--radius);
+  background:var(--surface2);font-family:'Nunito',sans-serif;
+  margin-top:8px;
+}
+.ruta-obs-input:focus{border-color:var(--goma-blue);background:#fff}
+
+/* Dir block header clickeable */
+.dir-block-header{cursor:pointer;transition:opacity 0.15s}
+.dir-block-header:hover{opacity:0.9}
+.dir-block-header .click-hint{
+  font-size:10px;color:rgba(255,255,255,0.5);
+  display:flex;align-items:center;gap:3px;margin-top:2px;
+}
+
+/* ── MOBILE OPTIMIZATIONS ── */
+@media(max-width:768px){
+  /* Sidebar mobile */
+  #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  .topbar-burger{display:flex}
+  /* Forms */
+  .form-row.cols-3,.form-row.cols-4{grid-template-columns:1fr 1fr}
+  .form-row.cols-2{grid-template-columns:1fr}
+  #content{padding:12px 14px}
+  /* Bigger touch targets */
+  .btn{padding:11px 16px;font-size:14px}
+  .btn-sm{padding:9px 14px;font-size:13px}
+  .btn-xs{padding:7px 12px;font-size:12px}
+  /* Bigger form inputs on mobile */
+  .form-group input,.form-group select,.form-group textarea{
+    padding:12px 14px;font-size:15px;
+  }
+  /* Direction blocks stacked */
+  .direction-blocks{grid-template-columns:1fr;gap:12px;margin-top:14px}
+  /* Make dir-block headers bigger on mobile */
+  .dir-block-header{padding:16px 18px}
+  .dir-block-header .dir-title{font-size:15px;gap:10px}
+  .dir-block-header .dir-count{font-size:14px;padding:4px 14px}
+  /* Order cards mobile */
+  .order-card-mini{padding:13px 14px}
+  .ocm-code{font-size:14px}
+  .ocm-desc{font-size:13px}
+  .ocm-actions{gap:8px;margin-top:10px}
+  /* Hide table columns that overflow */
+  .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Modal full screen on mobile */
+  .modal-overlay{padding:8px}
+  .modal-box{max-height:95vh;border-radius:12px}
+  .modal-box.modal-lg{max-width:100%}
+  /* Ruta ampliada inputs bigger on mobile */
+  .ruta-send-row input{padding:14px;font-size:22px;max-width:140px}
+  .ruta-order-card{padding:16px 14px}
+  /* Filters bar wrap */
+  .filters-bar{gap:6px}
+  .filters-bar input,.filters-bar select{min-width:0;flex:1;font-size:13px}
+  /* Page header */
+  .page-header h2{font-size:17px}
+}
+@media(max-width:480px){
+  .form-row.cols-2,.form-row.cols-3,.form-row.cols-4{grid-template-columns:1fr}
+  .login-box{padding:36px 24px;width:calc(100vw - 32px)}
+  #topbar{padding:0 14px}
+  #content{padding:10px 12px}
+}
 </style>
 </head>
 <body>
@@ -541,8 +631,8 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 14l-5-5h3V7h4v4h3l-5 5zm7 2H5v-2h14v2z"/></svg>
         Recibir mercadería
       </div>
-      <div class="nav-section">Gestión</div>
-      <div class="nav-item" onclick="navigate('articulos')" data-page="articulos">
+      <div class="nav-section" id="nav-section-gestion">Gestión</div>
+      <div class="nav-item" id="nav-articulos" onclick="navigate('articulos')" data-page="articulos">
         <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
         Artículos / Excel
       </div>
@@ -647,21 +737,27 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
         <!-- Direction blocks -->
         <div class="direction-blocks">
           <div class="dir-block" id="block-mt">
-            <div class="dir-block-header">
-              <span class="dir-title">
-                <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
-                Madryn → Trelew
-              </span>
+            <div class="dir-block-header" onclick="openRutaAmpliada('Madryn→Trelew')">
+              <div>
+                <span class="dir-title">
+                  <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
+                  Madryn → Trelew
+                </span>
+                <div class="click-hint"><svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg> Tocá para ver pedidos</div>
+              </div>
               <span class="dir-count" id="cnt-mt">0</span>
             </div>
             <div class="dir-block-body" id="list-mt"></div>
           </div>
           <div class="dir-block" id="block-tm">
-            <div class="dir-block-header" style="background:var(--primary-mid)">
-              <span class="dir-title">
-                <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
-                Trelew → Madryn
-              </span>
+            <div class="dir-block-header" style="background:var(--primary-mid)" onclick="openRutaAmpliada('Trelew→Madryn')">
+              <div>
+                <span class="dir-title">
+                  <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
+                  Trelew → Madryn
+                </span>
+                <div class="click-hint"><svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg> Tocá para ver pedidos</div>
+              </div>
               <span class="dir-count" id="cnt-tm">0</span>
             </div>
             <div class="dir-block-body" id="list-tm"></div>
@@ -882,6 +978,22 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
   </div>
 </div>
 
+<!-- Modal Ruta Ampliada -->
+<div class="modal-overlay" id="modal-ruta">
+  <div class="modal-box modal-lg" style="max-width:640px">
+    <div class="modal-head" id="ruta-modal-head">
+      <h3 id="ruta-modal-title">Pedidos</h3>
+      <div class="modal-close" onclick="closeModal('modal-ruta')">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </div>
+    </div>
+    <div class="modal-body" id="ruta-modal-body" style="padding:16px"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-ruta')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Detalle -->
 <div class="modal-overlay" id="modal-detalle">
   <div class="modal-box modal-lg">
@@ -1055,15 +1167,22 @@ function showApp(session){
   // Admin controls
   if(session.rol==='ADMIN'){
     document.getElementById('nav-usuarios').style.display='flex';
+    document.getElementById('nav-articulos').style.display='flex';
+    document.getElementById('nav-section-gestion').style.display='';
     document.getElementById('btn-add-product').style.display='inline-flex';
     document.getElementById('tab-btn-import').style.display='';
   } else {
+    document.getElementById('nav-articulos').style.display='none';
+    document.getElementById('nav-usuarios').style.display='none';
+    document.getElementById('nav-section-gestion').style.display='none';
     document.getElementById('btn-add-product').style.display='none';
     document.getElementById('tab-btn-import').style.display='none';
   }
-  // Pre-set direction for USER
-  if(session.rol==='USER' && session.sucursal){
-    // USER can only see their relevant orders but can choose direction
+  // Pre-seleccionar ruta según sucursal del usuario
+  if(session.sucursal==='Trelew'){
+    setTimeout(()=>{const el=document.getElementById('f-dir');if(el)el.value='Madryn→Trelew';},50);
+  } else if(session.sucursal==='Madryn'){
+    setTimeout(()=>{const el=document.getElementById('f-dir');if(el)el.value='Trelew→Madryn';},50);
   }
   navigate('inicio');
 }
@@ -1234,6 +1353,13 @@ function renderInicio(){
   const orders=DB.get(DB.keys.orders)||[];
   const session=currentSession();
 
+  // Re-aplicar ruta predeterminada al formulario si está vacía
+  const fDir=document.getElementById('f-dir');
+  if(fDir&&!fDir.value){
+    if(session.sucursal==='Trelew') fDir.value='Madryn→Trelew';
+    else if(session.sucursal==='Madryn') fDir.value='Trelew→Madryn';
+  }
+
   // Orden de bloques según sucursal del usuario
   // Madryn ve primero Trelew→Madryn (lo que le llega); Trelew ve primero Madryn→Trelew (lo que le llega)
   const blockMT=document.getElementById('block-mt');
@@ -1317,6 +1443,91 @@ function statusBadge(estado){
     'RECIBIDO CON DIFERENCIA':'badge-recibido-diff',
   };
   return `<span class="badge ${map[estado]||''}">${estado}</span>`;
+}
+
+// ═══════════════════════════════════════════
+//  RUTA AMPLIADA
+// ═══════════════════════════════════════════
+function openRutaAmpliada(dir){
+  const orders=DB.get(DB.keys.orders)||[];
+  const session=currentSession();
+  const pending=orders.filter(o=>
+    o.direccion===dir&&
+    (o.estado==='PENDIENTE'||o.estado==='ENVIADO CON FALTANTE')
+  );
+  const head=document.getElementById('ruta-modal-head');
+  const bgColor=dir==='Madryn→Trelew'?'var(--goma-blue)':'var(--goma-blue-mid)';
+  head.style.background=bgColor;
+  head.style.color='#fff';
+  document.getElementById('ruta-modal-title').style.color='#fff';
+  document.getElementById('ruta-modal-title').textContent=`${dir} — ${pending.length} pedido${pending.length!==1?'s':''} activo${pending.length!==1?'s':''}`;
+
+  const body=document.getElementById('ruta-modal-body');
+  if(!pending.length){
+    body.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg><p>Sin pedidos activos en esta ruta</p></div>`;
+    openModal('modal-ruta');
+    return;
+  }
+
+  body.innerHTML=pending.map(o=>`
+    <div class="ruta-order-card">
+      <div class="ruta-card-top">
+        <div>
+          <div class="ruta-card-code">${o.codigo}</div>
+          <div class="ruta-card-desc">${o.descripcion}</div>
+        </div>
+        ${statusBadge(o.estado)}
+      </div>
+      <div class="ruta-card-meta">
+        <span>Pedido: <strong>${o.cantidadPedida}</strong></span>
+        ${o.cantidadEnviada!==null?`<span>Enviado: <strong>${o.cantidadEnviada}</strong></span>`:''}
+        <span>${o.fechaPedido} ${o.horaPedido}</span>
+        <span>por <strong>${o.usuarioCreador}</strong></span>
+        ${o.urgente?'<span class="badge badge-urgente">Urgente</span>':''}
+        ${o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':''}
+      </div>
+      ${canEnviar(o,session)?`
+      <div class="ruta-send-row">
+        <label style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Cant. a enviar</label>
+        <input type="number" inputmode="numeric" id="ruta-qty-${o.id}" min="1" max="${o.cantidadPedida}" placeholder="0" style="">
+        <button class="btn btn-primary" onclick="confirmarEnvioRuta('${o.id}')">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          Enviar
+        </button>
+      </div>
+      <input type="text" class="ruta-obs-input" id="ruta-obs-${o.id}" placeholder="Observaciones del envío (opcional)">
+      `:`<button class="btn btn-sm btn-secondary" onclick="showDetalle('${o.id}');closeModal('modal-ruta')">Ver detalle</button>`}
+    </div>
+  `).join('');
+  openModal('modal-ruta');
+}
+
+function confirmarEnvioRuta(id){
+  const orders=DB.get(DB.keys.orders)||[];
+  const idx=orders.findIndex(x=>x.id===id);
+  if(idx===-1) return;
+  const o=orders[idx];
+  const cantInput=document.getElementById('ruta-qty-'+id);
+  const obsInput=document.getElementById('ruta-obs-'+id);
+  const cant=parseInt(cantInput?.value);
+  const obs=obsInput?obsInput.value.trim():'';
+  if(!cant||cant<1){alert('Ingresá la cantidad a enviar.');return}
+  if(cant>o.cantidadPedida){alert(`No podés enviar más de ${o.cantidadPedida} (cantidad pedida).`);return}
+  const session=currentSession();
+  const now=new Date();
+  orders[idx]={...o,
+    cantidadEnviada:cant,
+    estado:cant>=o.cantidadPedida?'ENVIADO':'ENVIADO CON FALTANTE',
+    observacionesEnvio:obs,
+    fechaEnvio:now.toISOString().split('T')[0],
+    horaEnvio:now.toTimeString().slice(0,5),
+    usuarioEnvio:session.username,
+  };
+  DB.set(DB.keys.orders,orders);
+  // Reabrir el modal con datos actualizados
+  const dir=o.direccion;
+  openRutaAmpliada(dir);
+  renderInicio();
 }
 
 // ═══════════════════════════════════════════
