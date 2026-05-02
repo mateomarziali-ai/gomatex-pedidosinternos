@@ -926,10 +926,16 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
       <div id="page-usuarios" class="page">
         <div class="page-header">
           <h2>Gestión de Usuarios</h2>
-          <button class="btn btn-primary" onclick="openAddUser()">
-            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            Nuevo usuario
-          </button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-danger" onclick="openBorrarPedidos()">
+              <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              Borrar pedidos
+            </button>
+            <button class="btn btn-primary" onclick="openAddUser()">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Nuevo usuario
+            </button>
+          </div>
         </div>
         <div class="card">
           <div class="table-wrap">
@@ -1129,6 +1135,45 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-product')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveProduct()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Borrar Pedidos (solo Admin) -->
+<div class="modal-overlay" id="modal-borrar">
+  <div class="modal-box">
+    <div class="modal-head" style="background:var(--danger-bg)">
+      <h3 style="color:var(--danger);display:flex;align-items:center;gap:8px">
+        <svg width="18" height="18" fill="var(--danger)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Borrar pedidos — Zona de pruebas
+      </h3>
+      <div class="modal-close" onclick="closeModal('modal-borrar')">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" style="margin-bottom:16px">
+        <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+        Esta acción es irreversible. Los pedidos borrados no se pueden recuperar.
+      </div>
+      <p style="font-size:14px;color:var(--text-mid);margin-bottom:20px">Seleccioná qué querés borrar:</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-warning" onclick="borrarPedidos('pendientes')" style="justify-content:flex-start;padding:14px 16px">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Borrar solo pedidos PENDIENTES
+        </button>
+        <button class="btn btn-warning" onclick="borrarPedidos('historial')" style="justify-content:flex-start;padding:14px 16px">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Borrar historial (enviados y recibidos)
+        </button>
+        <button class="btn btn-danger" onclick="borrarPedidos('todos')" style="justify-content:flex-start;padding:14px 16px">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Borrar TODOS los pedidos
+        </button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-borrar')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2779,6 +2824,76 @@ function exportarExcel(){
   const fecha = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `gomatex_pedidos_${fecha}.xlsx`);
   showToast('\u2713 Excel exportado correctamente','success');
+}
+
+// ═══════════════════════════════════════════
+//  BORRAR PEDIDOS (solo Admin)
+// ═══════════════════════════════════════════
+function openBorrarPedidos(){
+  const session = currentSession();
+  if(session.rol !== 'ADMIN'){ return; }
+  openModal('modal-borrar');
+}
+
+async function borrarPedidos(tipo){
+  const session = currentSession();
+  if(session.rol !== 'ADMIN'){ return; }
+
+  const labels = {
+    pendientes: 'todos los pedidos PENDIENTES',
+    historial: 'todo el historial (enviados y recibidos)',
+    todos: 'TODOS los pedidos'
+  };
+
+  if(!confirm('¿Confirmas que querés borrar ' + labels[tipo] + '? Esta acción no se puede deshacer.')) return;
+
+  let orders = _cache.orders;
+  let idsABorrar = [];
+
+  if(tipo === 'pendientes'){
+    idsABorrar = orders.filter(o => o.estado === 'PENDIENTE').map(o => o.id);
+  } else if(tipo === 'historial'){
+    idsABorrar = orders.filter(o => o.estado !== 'PENDIENTE').map(o => o.id);
+  } else {
+    idsABorrar = orders.map(o => o.id);
+  }
+
+  if(!idsABorrar.length){
+    showToast('No hay pedidos para borrar con ese criterio','warning');
+    return;
+  }
+
+  showLoader(true);
+  let errores = 0;
+  // Borrar en Supabase de a uno (o en batch si hay muchos)
+  for(const id of idsABorrar){
+    try {
+      await DB._req('gomatex_orders?id=eq.' + id, { method: 'DELETE' });
+    } catch(e){
+      errores++;
+    }
+  }
+  showLoader(false);
+
+  // Actualizar cache
+  if(tipo === 'pendientes'){
+    _cache.orders = _cache.orders.filter(o => o.estado !== 'PENDIENTE');
+  } else if(tipo === 'historial'){
+    _cache.orders = _cache.orders.filter(o => o.estado === 'PENDIENTE');
+  } else {
+    _cache.orders = [];
+  }
+  _prevOrderCount = _cache.orders.length;
+
+  closeModal('modal-borrar');
+
+  if(errores === 0){
+    showToast('\u2713 ' + idsABorrar.length + ' pedido' + (idsABorrar.length!==1?'s':'') + ' borrado' + (idsABorrar.length!==1?'s':'') + ' correctamente','success');
+  } else {
+    showToast('Se borraron ' + (idsABorrar.length - errores) + ' pedidos. ' + errores + ' con error.','warning');
+  }
+
+  renderInicio();
 }
 
 // ═══════════════════════════════════════════
