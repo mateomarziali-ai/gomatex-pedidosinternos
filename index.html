@@ -911,12 +911,14 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 
         <div id="art-tab-list" style="display:none">
           <div class="filters-bar">
-            <input type="text" id="prod-search" placeholder="Buscar código o descripción..." oninput="renderProducts()" style="flex:1;max-width:400px">
+            <input type="text" id="prod-search" placeholder="Buscar código o descripción..." oninput="debouncedSearch()" style="flex:1;max-width:400px">
+            <span id="prod-search-status" style="font-size:12px;color:var(--text-muted)"></span>
           </div>
           <div class="card">
             <div id="products-list"></div>
-            <div style="padding:10px 16px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted)">
-              <span id="products-count">0 artículos</span>
+            <div style="padding:10px 16px;border-top:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <span id="products-count" style="font-size:12px;color:var(--text-muted)">0 artículos</span>
+              <div id="prod-pagination" style="display:flex;align-items:center;gap:6px"></div>
             </div>
           </div>
         </div>
@@ -954,12 +956,18 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
         <div class="page-header">
           <h2>Métricas y Estadísticas</h2>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select id="m-periodo" onchange="renderMetricas()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:13px;background:var(--surface)">
+            <select id="m-periodo" onchange="onMetricasPeriodoChange()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:13px;background:var(--surface)">
               <option value="7">Últimos 7 días</option>
               <option value="30" selected>Últimos 30 días</option>
               <option value="90">Últimos 90 días</option>
               <option value="0">Todo el tiempo</option>
+              <option value="dia">Día específico</option>
             </select>
+            <div id="m-fecha-wrap" style="display:none;align-items:center;gap:6px">
+              <input type="date" id="m-fecha-especifica" onchange="renderMetricas()"
+                style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:13px;background:var(--surface)">
+              <button class="btn btn-sm btn-secondary" onclick="limpiarFechaMetricas()">✕ Limpiar</button>
+            </div>
             <button class="btn btn-success" onclick="exportarExcel()">
               <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
               Exportar Excel
@@ -2202,69 +2210,179 @@ function renderHistorial(){
 }
 
 // ═══════════════════════════════════════════
-//  ARTICULOS / EXCEL
+//  ARTICULOS — PAGINACIÓN Y RENDIMIENTO
 // ═══════════════════════════════════════════
 let editingProductId = null;
 let importPreviewData = [];
+let _prodPage = 0;
+const PROD_PAGE_SIZE = 80;
+let _prodFiltered = [];
+let _prodSearchTimer = null;
+
+function debouncedSearch(){
+  clearTimeout(_prodSearchTimer);
+  const status = document.getElementById('prod-search-status');
+  if(status) status.textContent = 'Buscando...';
+  _prodSearchTimer = setTimeout(() => { _prodPage = 0; renderProducts(); }, 220);
+}
 
 function switchTab(tabId,prefix){
-  const tabEls=document.querySelectorAll(`[id^="${prefix}tab-"]`);
+  const tabEls=document.querySelectorAll('[id^="'+prefix+'tab-"]');
   tabEls.forEach(el=>el.style.display=el.id===prefix+tabId?'block':'none');
   const tabs=document.querySelectorAll('#page-articulos .tab');
   tabs.forEach((t,i)=>{ t.classList.toggle('active',(tabId==='tab-import'&&i===0)||(tabId==='tab-list'&&i===1)); });
-  if(tabId==='tab-list') renderProducts();
+  if(tabId==='tab-list'){ _prodPage=0; renderProducts(); }
+}
+
+function renderProducts(){
+  const products = _cache.products;
+  const session = currentSession();
+  const isAdmin = session.rol==='ADMIN';
+  const search = document.getElementById('prod-search')?.value.toLowerCase().trim()||'';
+  const status = document.getElementById('prod-search-status');
+
+  if(search){
+    _prodFiltered = products.filter(p =>
+      p.codigo.toLowerCase().includes(search) || p.descripcion.toLowerCase().includes(search)
+    );
+  } else {
+    _prodFiltered = products;
+  }
+
+  const total = _prodFiltered.length;
+  const totalPages = Math.ceil(total / PROD_PAGE_SIZE);
+  if(_prodPage >= totalPages) _prodPage = Math.max(0, totalPages - 1);
+  const start = _prodPage * PROD_PAGE_SIZE;
+  const slice = _prodFiltered.slice(start, start + PROD_PAGE_SIZE);
+
+  const countEl = document.getElementById('products-count');
+  if(countEl) countEl.textContent = (search ? total + ' resultado' + (total!==1?'s':'') + ' de ' : '') + products.length + ' art\u00edculo' + (products.length!==1?'s':'');
+  if(status) status.textContent = '';
+
+  const list = document.getElementById('products-list');
+  if(!list) return;
+
+  if(!total){
+    list.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg><p>' + (search?'Sin resultados para "'+search+'"':'No hay art\u00edculos cargados') + '</p></div>';
+    const pag = document.getElementById('prod-pagination'); if(pag) pag.innerHTML='';
+    return;
+  }
+
+  list.innerHTML = slice.map(p => {
+    const code = escHtml(p.codigo);
+    return '<div class="product-item">' +
+      '<div><span class="pi-code">' + p.codigo + '</span>' +
+      '<span style="color:var(--text-light);margin:0 8px">\u00b7</span>' +
+      '<span class="pi-desc">' + p.descripcion + '</span></div>' +
+      '<div class="pi-actions">' +
+      (isAdmin ?
+        '<button class="btn btn-xs btn-secondary" onclick="openEditProduct(\'' + code + '\')">Editar</button> ' +
+        '<button class="btn btn-xs btn-danger" onclick="deleteProductAction(\'' + code + '\')">Eliminar</button>'
+        : '') +
+      '</div></div>';
+  }).join('');
+
+  renderProdPagination(totalPages);
+}
+
+function renderProdPagination(totalPages){
+  const pag = document.getElementById('prod-pagination');
+  if(!pag) return;
+  if(totalPages <= 1){ pag.innerHTML=''; return; }
+  const cur = _prodPage;
+  let html = '<button class="btn btn-xs btn-secondary" '+(cur===0?'disabled':'onclick="changeProdPage('+(cur-1)+')"')+' style="padding:4px 10px">\u2190</button>';
+  const pages=[];
+  for(let i=0;i<totalPages;i++){ if(i===0||i===totalPages-1||Math.abs(i-cur)<=2) pages.push(i); }
+  let prev=-1;
+  pages.forEach(i=>{
+    if(prev!==-1&&i-prev>1) html+='<span style="font-size:12px;color:var(--text-muted);padding:0 4px">...</span>';
+    html+='<button class="btn btn-xs '+(i===cur?'btn-primary':'btn-secondary')+'" onclick="changeProdPage('+i+')" style="padding:4px 10px;min-width:30px">'+(i+1)+'</button>';
+    prev=i;
+  });
+  html+='<button class="btn btn-xs btn-secondary" '+(cur>=totalPages-1?'disabled':'onclick="changeProdPage('+(cur+1)+')"')+' style="padding:4px 10px">\u2192</button>';
+  html+='<span style="font-size:12px;color:var(--text-muted);margin-left:4px">p\u00e1g.'+(cur+1)+'/'+totalPages+'</span>';
+  pag.innerHTML=html;
+}
+
+function changeProdPage(page){
+  _prodPage=page; renderProducts();
+  const list=document.getElementById('products-list');
+  if(list) list.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function handleFileImport(event){
-  const file=event.target.files[0]; if(!file)return;
+  const file=event.target.files[0]; if(!file) return;
+  const preview=document.getElementById('import-preview');
+  preview.innerHTML='<div class="alert alert-info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Leyendo archivo...</div>';
   const reader=new FileReader();
   reader.onload=function(e){
-    let data=[];
-    if(file.name.endsWith('.csv')){
-      const lines=e.target.result.split('\n').filter(l=>l.trim());
-      data=lines.map(line=>{ const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim()); return {codigo:cols[0]||'',descripcion:cols[1]||''}; }).filter(r=>r.codigo);
-    } else {
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const raw=XLSX.utils.sheet_to_json(ws,{header:1});
-      data=raw.map(row=>({codigo:String(row[0]||'').trim(),descripcion:String(row[1]||'').trim()})).filter(r=>r.codigo);
-    }
-    importPreviewData=data; showImportPreview(data);
+    preview.innerHTML='<div class="alert alert-info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Procesando filas...</div>';
+    setTimeout(()=>{
+      let data=[];
+      try {
+        if(file.name.endsWith('.csv')){
+          data=e.target.result.split('\n').filter(l=>l.trim())
+            .map(line=>{ const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim()); return {codigo:cols[0]||'',descripcion:cols[1]||''}; })
+            .filter(r=>r.codigo);
+        } else {
+          const wb=XLSX.read(e.target.result,{type:'array'});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          data=XLSX.utils.sheet_to_json(ws,{header:1})
+            .map(row=>({codigo:String(row[0]||'').trim(),descripcion:String(row[1]||'').trim()}))
+            .filter(r=>r.codigo);
+        }
+      } catch(err){
+        preview.innerHTML='<div class="alert alert-error"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Error: '+err.message+'</div>';
+        return;
+      }
+      importPreviewData=data; showImportPreview(data);
+    },50);
   };
   if(file.name.endsWith('.csv')) reader.readAsText(file);
   else reader.readAsArrayBuffer(file);
 }
 
 function showImportPreview(data){
-  if(!data.length){ document.getElementById('import-preview').innerHTML=`<div class="alert alert-error"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>No se encontraron art\u00edculos.</div>`; return; }
-  document.getElementById('import-preview').innerHTML=`
-    <div class="alert alert-info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-      <strong>${data.length} art\u00edculos</strong> encontrados. \u00bfC\u00f3mo import\u00e1rlos?
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      <button class="btn btn-primary" onclick="doImport(false)"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Agregar a la lista</button>
-      <button class="btn btn-warning" onclick="doImport(true)"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Reemplazar lista</button>
-    </div>
-    <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border-light);border-radius:var(--radius)">
-      <table><thead><tr><th>C\u00f3digo</th><th>Descripci\u00f3n</th></tr></thead>
-      <tbody>${data.slice(0,20).map(r=>`<tr><td style="font-family:DM Mono,monospace;font-size:12px">${r.codigo}</td><td>${r.descripcion}</td></tr>`).join('')}
-      ${data.length>20?`<tr><td colspan="2" style="text-align:center;color:var(--text-muted);padding:8px">... y ${data.length-20} m\u00e1s</td></tr>`:''}</tbody></table>
-    </div>`;
+  const preview=document.getElementById('import-preview');
+  if(!data.length){ preview.innerHTML='<div class="alert alert-error"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>No se encontraron art\u00edculos.</div>'; return; }
+  const existMap={};
+  _cache.products.forEach(p=>existMap[p.codigo]=true);
+  const nuevos=data.filter(p=>!existMap[p.codigo]).length;
+  const actualizar=data.filter(p=>existMap[p.codigo]).length;
+  preview.innerHTML=
+    '<div class="alert alert-info" style="margin-bottom:12px"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>'+
+    '<div><strong>'+data.length+' art\u00edculos</strong> encontrados.<br>'+
+    '<span style="font-size:12px">\u2022 '+nuevos+' nuevos \u00b7 '+actualizar+' ya existentes (se actualizar\u00e1n)</span></div></div>'+
+    '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+    '<button class="btn btn-primary" onclick="doImport(false)"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Agregar / actualizar</button>'+
+    '<button class="btn btn-warning" onclick="doImport(true)"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Reemplazar todo</button></div>'+
+    '<div style="max-height:180px;overflow-y:auto;border:1px solid var(--border-light);border-radius:var(--radius)">'+
+    '<table><thead><tr><th>C\u00f3digo</th><th>Descripci\u00f3n</th><th>Estado</th></tr></thead><tbody>'+
+    data.slice(0,30).map(r=>'<tr><td style="font-family:DM Mono,monospace;font-size:12px">'+r.codigo+'</td><td>'+r.descripcion+'</td>'+
+      '<td><span style="font-size:11px;font-weight:700;color:'+(existMap[r.codigo]?'var(--warning)':'var(--success)')+'">'+
+      (existMap[r.codigo]?'Actualizar':'Nuevo')+'</span></td></tr>').join('')+
+    (data.length>30?'<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:8px">... y '+(data.length-30)+' m\u00e1s</td></tr>':'')+
+    '</tbody></table></div>';
 }
 
 async function doImport(replace){
-  const existing = replace ? [] : [..._cache.products];
-  let merged = replace ? [...importPreviewData] : [...existing];
-  if(!replace){
-    importPreviewData.forEach(p=>{
-      const exists=merged.find(e=>e.codigo===p.codigo);
-      if(!exists) merged.push(p); else exists.descripcion=p.descripcion;
-    });
+  const preview=document.getElementById('import-preview');
+  preview.innerHTML='<div class="alert alert-info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Procesando '+importPreviewData.length+' art\u00edculos...</div>';
+  await new Promise(resolve=>setTimeout(resolve,30));
+  let merged;
+  if(replace){
+    merged=[...importPreviewData];
+  } else {
+    const map={};
+    _cache.products.forEach(p=>map[p.codigo]=p);
+    importPreviewData.forEach(p=>{ if(map[p.codigo]) map[p.codigo].descripcion=p.descripcion; else map[p.codigo]=p; });
+    merged=Object.values(map);
   }
+  preview.innerHTML='<div class="alert alert-info"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Guardando en base de datos...</div>';
   await DB.saveProducts(merged);
-  document.getElementById('import-preview').innerHTML=`<div class="alert alert-success"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><strong>${merged.length} art\u00edculos</strong> guardados correctamente.</div>`;
+  preview.innerHTML='<div class="alert alert-success"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><strong>'+merged.length+' art\u00edculos</strong> guardados correctamente. \u2705</div>';
   document.getElementById('file-input').value='';
-  importPreviewData=[];
+  importPreviewData=[]; _prodPage=0;
 }
 
 function uploadDragLeave(){ document.getElementById('upload-zone').classList.remove('drag-over'); }
@@ -2274,34 +2392,10 @@ function uploadDrop(e){
   if(file){ document.getElementById('file-input').files=e.dataTransfer.files; handleFileImport({target:{files:[file]}}); }
 }
 
-function renderProducts(){
-  const products = _cache.products;
-  const session = currentSession();
-  const isAdmin = session.rol==='ADMIN';
-  const search = document.getElementById('prod-search')?.value.toLowerCase()||'';
-  const filtered = search ? products.filter(p=>p.codigo.toLowerCase().includes(search)||p.descripcion.toLowerCase().includes(search)) : products;
-  document.getElementById('products-count').textContent=`${filtered.length} art\u00edculo${filtered.length!==1?'s':''}`;
-  const list=document.getElementById('products-list');
-  if(!filtered.length){ list.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg><p>No hay art\u00edculos cargados</p></div>`; return; }
-  list.innerHTML=filtered.map(p=>`
-    <div class="product-item">
-      <div>
-        <span class="pi-code">${p.codigo}</span>
-        <span style="color:var(--text-light);margin:0 8px">\u00b7</span>
-        <span class="pi-desc">${p.descripcion}</span>
-      </div>
-      <div class="pi-actions">
-        ${isAdmin?`<button class="btn btn-xs btn-secondary" onclick="openEditProduct('${escHtml(p.codigo)}')">Editar</button>
-        <button class="btn btn-xs btn-danger" onclick="deleteProductAction('${escHtml(p.codigo)}')">Eliminar</button>`:''}
-      </div>
-    </div>
-  `).join('');
-}
-
 function openAddProduct(){ editingProductId=null; document.getElementById('prod-modal-title').textContent='Agregar Art\u00edculo'; document.getElementById('prod-codigo').value=''; document.getElementById('prod-desc').value=''; openModal('modal-product'); }
 
 function openEditProduct(codigo){
-  const p=_cache.products.find(x=>x.codigo===codigo); if(!p)return;
+  const p=_cache.products.find(x=>x.codigo===codigo); if(!p) return;
   editingProductId=codigo;
   document.getElementById('prod-modal-title').textContent='Editar Art\u00edculo';
   document.getElementById('prod-codigo').value=p.codigo;
@@ -2319,16 +2413,14 @@ async function saveProduct(){
     if(_cache.products.find(p=>p.codigo===codigo)){ alert('Ya existe un art\u00edculo con ese c\u00f3digo.'); return; }
     await DB.saveProduct({codigo,descripcion});
   }
-  closeModal('modal-product');
-  renderProducts();
+  closeModal('modal-product'); _prodPage=0; renderProducts();
 }
 
 async function deleteProductAction(codigo){
-  if(!confirm(`\u00bfEliminar el art\u00edculo "${codigo}"?`)) return;
+  if(!confirm('\u00bfEliminar el art\u00edculo "'+codigo+'"?')) return;
   await DB.deleteProduct(codigo);
   renderProducts();
 }
-
 // ═══════════════════════════════════════════
 //  USUARIOS
 // ═══════════════════════════════════════════
@@ -2581,8 +2673,43 @@ function destroyChart(id){
   if(_charts[id]){ _charts[id].destroy(); delete _charts[id]; }
 }
 
+function onMetricasPeriodoChange(){
+  const val = document.getElementById('m-periodo')?.value;
+  const wrap = document.getElementById('m-fecha-wrap');
+  if(val === 'dia'){
+    wrap.style.display = 'flex';
+    // Setear fecha de hoy por defecto si no hay ninguna
+    const input = document.getElementById('m-fecha-especifica');
+    if(input && !input.value) input.value = new Date().toISOString().split('T')[0];
+  } else {
+    wrap.style.display = 'none';
+  }
+  renderMetricas();
+}
+
+function limpiarFechaMetricas(){
+  const periodoEl = document.getElementById('m-periodo');
+  const input = document.getElementById('m-fecha-especifica');
+  const wrap = document.getElementById('m-fecha-wrap');
+  if(periodoEl) periodoEl.value = '30';
+  if(input) input.value = '';
+  if(wrap) wrap.style.display = 'none';
+  renderMetricas();
+}
+
 function filtrarPorPeriodo(orders){
-  const dias = parseInt(document.getElementById('m-periodo')?.value||'30');
+  const val = document.getElementById('m-periodo')?.value||'30';
+
+  if(val === 'dia'){
+    const fecha = document.getElementById('m-fecha-especifica')?.value||'';
+    if(!fecha) return orders;
+    // Filtra por fecha de pedido, envío o recepción
+    return orders.filter(o =>
+      o.fechaPedido===fecha || o.fechaEnvio===fecha || o.fechaRecepcion===fecha
+    );
+  }
+
+  const dias = parseInt(val);
   if(dias === 0) return orders;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dias);
@@ -2804,7 +2931,15 @@ function exportarExcel(){
   XLSX.utils.book_append_sheet(wb, ws2, 'Resumen por artículo');
 
   // Hoja estadísticas rápidas
-  const periodo = document.getElementById('m-periodo')?.options[document.getElementById('m-periodo')?.selectedIndex]?.text || '30 días';
+  const periodoEl = document.getElementById('m-periodo');
+  const val = periodoEl?.value||'30';
+  let periodo;
+  if(val === 'dia'){
+    const f = document.getElementById('m-fecha-especifica')?.value||'hoy';
+    periodo = 'Día: ' + f;
+  } else {
+    periodo = periodoEl?.options[periodoEl?.selectedIndex]?.text || '30 días';
+  }
   const ws3 = XLSX.utils.aoa_to_sheet([
     ['GOMATEX — Estadísticas de pedidos'],
     ['Período:', periodo],
