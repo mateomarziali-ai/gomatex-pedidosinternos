@@ -1141,39 +1141,43 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 
 <!-- Modal Borrar Pedidos (solo Admin) -->
 <div class="modal-overlay" id="modal-borrar">
-  <div class="modal-box">
+  <div class="modal-box modal-lg" style="max-width:680px">
     <div class="modal-head" style="background:var(--danger-bg)">
       <h3 style="color:var(--danger);display:flex;align-items:center;gap:8px">
-        <svg width="18" height="18" fill="var(--danger)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        Borrar pedidos — Zona de pruebas
+        <svg width="18" height="18" fill="var(--danger)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        Gestión de pedidos — Solo Admin
       </h3>
       <div class="modal-close" onclick="closeModal('modal-borrar')">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </div>
     </div>
-    <div class="modal-body">
-      <div class="alert alert-error" style="margin-bottom:16px">
-        <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-        Esta acción es irreversible. Los pedidos borrados no se pueden recuperar.
+    <div class="modal-body" style="padding:0">
+      <!-- Filtros rápidos -->
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="borrar-filtro" onchange="renderBorrarLista()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:13px">
+          <option value="todos">Todos los pedidos</option>
+          <option value="pendientes">Solo Pendientes</option>
+          <option value="enviados">Solo Enviados</option>
+          <option value="recibidos">Solo Recibidos</option>
+        </select>
+        <input type="text" id="borrar-search" placeholder="Buscar código o descripción..." oninput="renderBorrarLista()"
+          style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:13px">
+        <button class="btn btn-sm btn-secondary" onclick="selectAllBorrar(true)">Selec. todos</button>
+        <button class="btn btn-sm btn-secondary" onclick="selectAllBorrar(false)">Deselec.</button>
       </div>
-      <p style="font-size:14px;color:var(--text-mid);margin-bottom:20px">Seleccioná qué querés borrar:</p>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="btn btn-warning" onclick="borrarPedidos('pendientes')" style="justify-content:flex-start;padding:14px 16px">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Borrar solo pedidos PENDIENTES
-        </button>
-        <button class="btn btn-warning" onclick="borrarPedidos('historial')" style="justify-content:flex-start;padding:14px 16px">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Borrar historial (enviados y recibidos)
-        </button>
-        <button class="btn btn-danger" onclick="borrarPedidos('todos')" style="justify-content:flex-start;padding:14px 16px">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Borrar TODOS los pedidos
-        </button>
+      <!-- Lista de pedidos -->
+      <div id="borrar-lista" style="max-height:400px;overflow-y:auto;padding:8px 0"></div>
+      <!-- Footer conteo -->
+      <div style="padding:10px 18px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center">
+        <span id="borrar-count">0 seleccionados</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-borrar')">Cancelar</button>
+          <button class="btn btn-danger" onclick="borrarSeleccionados()">
+            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Borrar seleccionados
+          </button>
+        </div>
       </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-borrar')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2830,69 +2834,114 @@ function exportarExcel(){
 //  BORRAR PEDIDOS (solo Admin)
 // ═══════════════════════════════════════════
 function openBorrarPedidos(){
-  const session = currentSession();
-  if(session.rol !== 'ADMIN'){ return; }
+  if(currentSession().rol !== 'ADMIN') return;
+  renderBorrarLista();
   openModal('modal-borrar');
 }
 
-async function borrarPedidos(tipo){
-  const session = currentSession();
-  if(session.rol !== 'ADMIN'){ return; }
+function renderBorrarLista(){
+  const filtro = document.getElementById('borrar-filtro')?.value || 'todos';
+  const search = document.getElementById('borrar-search')?.value.toLowerCase() || '';
+  let orders = [..._cache.orders];
 
-  const labels = {
-    pendientes: 'todos los pedidos PENDIENTES',
-    historial: 'todo el historial (enviados y recibidos)',
-    todos: 'TODOS los pedidos'
-  };
+  // Filtro por tipo
+  if(filtro === 'pendientes') orders = orders.filter(o => o.estado === 'PENDIENTE');
+  else if(filtro === 'enviados') orders = orders.filter(o => o.estado==='ENVIADO'||o.estado==='ENVIADO CON FALTANTE');
+  else if(filtro === 'recibidos') orders = orders.filter(o => o.estado==='RECIBIDO'||o.estado==='RECIBIDO CON DIFERENCIA');
 
-  if(!confirm('¿Confirmas que querés borrar ' + labels[tipo] + '? Esta acción no se puede deshacer.')) return;
+  // Filtro búsqueda
+  if(search) orders = orders.filter(o =>
+    o.codigo.toLowerCase().includes(search) || o.descripcion.toLowerCase().includes(search)
+  );
 
-  let orders = _cache.orders;
-  let idsABorrar = [];
+  // Ordenar más reciente primero
+  orders.sort((a,b) => ((b.fechaPedido||'')+(b.horaPedido||'')).localeCompare((a.fechaPedido||'')+(a.horaPedido||'')));
 
-  if(tipo === 'pendientes'){
-    idsABorrar = orders.filter(o => o.estado === 'PENDIENTE').map(o => o.id);
-  } else if(tipo === 'historial'){
-    idsABorrar = orders.filter(o => o.estado !== 'PENDIENTE').map(o => o.id);
-  } else {
-    idsABorrar = orders.map(o => o.id);
-  }
-
-  if(!idsABorrar.length){
-    showToast('No hay pedidos para borrar con ese criterio','warning');
+  const lista = document.getElementById('borrar-lista');
+  if(!orders.length){
+    lista.innerHTML = '<div class="empty-state" style="padding:28px"><p>No hay pedidos con ese filtro</p></div>';
+    actualizarContadorBorrar();
     return;
   }
 
+  lista.innerHTML = orders.map(o => {
+    const estadoColor = o.estado==='PENDIENTE'?'var(--warning)':o.estado.startsWith('ENVIADO')?'var(--info)':'var(--success)';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border-light);transition:background 0.1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"  >
+      <input type="checkbox" id="chk-${o.id}" data-id="${o.id}" class="borrar-chk" onchange="actualizarContadorBorrar()"
+        style="width:18px;height:18px;accent-color:var(--danger);cursor:pointer;flex-shrink:0">
+      <label for="chk-${o.id}" style="flex:1;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--primary);min-width:80px">${o.codigo}</span>
+        <span style="font-size:13px;color:var(--text-mid);flex:1">${o.descripcion}</span>
+        <span class="dir-badge" style="font-size:10px">${o.direccion}</span>
+        <span style="font-size:11px;font-weight:700;color:${estadoColor}">${o.estado}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${o.fechaPedido} ${o.horaPedido}</span>
+        <span style="font-size:11px;color:var(--text-muted)">por ${o.usuarioCreador}</span>
+      </label>
+    </div>`;
+  }).join('');
+
+  actualizarContadorBorrar();
+}
+
+function actualizarContadorBorrar(){
+  const checkboxes = document.querySelectorAll('.borrar-chk:checked');
+  const total = document.querySelectorAll('.borrar-chk').length;
+  document.getElementById('borrar-count').textContent =
+    checkboxes.length + ' de ' + total + ' seleccionado' + (checkboxes.length!==1?'s':'');
+}
+
+function selectAllBorrar(select){
+  document.querySelectorAll('.borrar-chk').forEach(chk => chk.checked = select);
+  actualizarContadorBorrar();
+}
+
+async function borrarSeleccionados(){
+  const seleccionados = [...document.querySelectorAll('.borrar-chk:checked')].map(chk => chk.dataset.id);
+  if(!seleccionados.length){
+    showToast('Seleccioná al menos un pedido para borrar','warning');
+    return;
+  }
+  if(!confirm('¿Borrar ' + seleccionados.length + ' pedido' + (seleccionados.length!==1?'s':'') + '? Esta acción no se puede deshacer.')) return;
+
   showLoader(true);
   let errores = 0;
-  // Borrar en Supabase de a uno (o en batch si hay muchos)
-  for(const id of idsABorrar){
+  for(const id of seleccionados){
     try {
       await DB._req('gomatex_orders?id=eq.' + id, { method: 'DELETE' });
-    } catch(e){
-      errores++;
-    }
+    } catch(e){ errores++; }
   }
   showLoader(false);
 
   // Actualizar cache
-  if(tipo === 'pendientes'){
-    _cache.orders = _cache.orders.filter(o => o.estado !== 'PENDIENTE');
-  } else if(tipo === 'historial'){
-    _cache.orders = _cache.orders.filter(o => o.estado === 'PENDIENTE');
-  } else {
-    _cache.orders = [];
-  }
+  _cache.orders = _cache.orders.filter(o => !seleccionados.includes(o.id));
   _prevOrderCount = _cache.orders.length;
 
   closeModal('modal-borrar');
 
   if(errores === 0){
-    showToast('\u2713 ' + idsABorrar.length + ' pedido' + (idsABorrar.length!==1?'s':'') + ' borrado' + (idsABorrar.length!==1?'s':'') + ' correctamente','success');
+    showToast('\u2713 ' + seleccionados.length + ' pedido' + (seleccionados.length!==1?'s':'') + ' borrado' + (seleccionados.length!==1?'s':''), 'success');
   } else {
-    showToast('Se borraron ' + (idsABorrar.length - errores) + ' pedidos. ' + errores + ' con error.','warning');
+    showToast('Borraron ' + (seleccionados.length - errores) + '. Errores: ' + errores, 'warning');
   }
+  renderInicio();
+}
 
+// Mantener compatibilidad con botón masivo antiguo (ya no se usa pero no rompe)
+async function borrarPedidos(tipo){
+  const filtros = {pendientes:'Solo Pendientes',historial:'Historial completo',todos:'TODOS los pedidos'};
+  if(!confirm('¿Borrar ' + filtros[tipo] + '? Esta acción no se puede deshacer.')) return;
+  let ids = [];
+  if(tipo==='pendientes') ids = _cache.orders.filter(o=>o.estado==='PENDIENTE').map(o=>o.id);
+  else if(tipo==='historial') ids = _cache.orders.filter(o=>o.estado!=='PENDIENTE').map(o=>o.id);
+  else ids = _cache.orders.map(o=>o.id);
+  if(!ids.length){ showToast('No hay pedidos para borrar','warning'); return; }
+  showLoader(true);
+  for(const id of ids){ try{ await DB._req('gomatex_orders?id=eq.'+id,{method:'DELETE'}); }catch(e){} }
+  showLoader(false);
+  _cache.orders = tipo==='todos'?[]:tipo==='pendientes'?_cache.orders.filter(o=>o.estado!=='PENDIENTE'):_cache.orders.filter(o=>o.estado==='PENDIENTE');
+  _prevOrderCount = _cache.orders.length;
+  closeModal('modal-borrar');
+  showToast('\u2713 Pedidos borrados correctamente','success');
   renderInicio();
 }
 
