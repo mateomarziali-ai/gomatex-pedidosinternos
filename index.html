@@ -409,29 +409,50 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 
 .dir-block{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border-light);overflow:hidden;box-shadow:var(--shadow)}
 .dir-block-header{
-  padding:13px 16px;display:flex;align-items:center;justify-content:space-between;
-  background:var(--goma-blue);
+  padding:16px 18px;display:flex;align-items:center;justify-content:space-between;
+  background:var(--goma-blue);cursor:pointer;transition:opacity 0.15s;
 }
-.dir-block-header .dir-title{font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.dir-block-header:hover{opacity:0.93}
+.dir-block-header .dir-title{
+  font-size:18px;font-weight:800;color:#fff;
+  display:flex;align-items:center;gap:10px;
+  letter-spacing:-0.3px;font-family:'Nunito',sans-serif;
+}
 .dir-block-header .dir-count{
-  background:rgba(255,255,255,0.16);color:#fff;
-  padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;
-  border:1px solid rgba(255,255,255,0.22);
+  background:rgba(255,255,255,0.2);color:#fff;
+  padding:6px 14px;border-radius:20px;font-size:18px;font-weight:800;
+  border:1.5px solid rgba(255,255,255,0.35);min-width:40px;text-align:center;
 }
-.dir-block-body{padding:12px}
+.dir-block-body{padding:10px}
+
+/* Order card jerarquía visual mejorada */
 .order-card-mini{
-  background:var(--surface2);border:1px solid var(--border-light);
-  border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;
-  transition:box-shadow 0.15s,background 0.15s;
+  background:#fff;border:1.5px solid var(--border-light);
+  border-radius:var(--radius-lg);padding:14px;margin-bottom:10px;
+  transition:box-shadow 0.15s,border-color 0.15s;
 }
-.order-card-mini:hover{box-shadow:var(--shadow-md);background:#fff;border-color:var(--border)}
+.order-card-mini:hover{box-shadow:var(--shadow-md);border-color:var(--goma-blue)}
 .order-card-mini:last-child{margin-bottom:0}
-.ocm-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
-.ocm-code{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--goma-blue)}
-.ocm-desc{font-size:12px;color:var(--text-mid);margin-top:1px}
+
+/* Fila código + descripción */
+.ocm-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.ocm-code{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--goma-blue)}
+.ocm-desc{font-size:13px;color:var(--text-mid);margin-top:2px;font-weight:500;line-height:1.3}
+
+/* Cantidad solicitada destacada */
+.ocm-qty-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--goma-blue-pale);border-radius:var(--radius);
+  padding:8px 12px;margin-bottom:8px;
+}
+.ocm-qty-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px}
+.ocm-qty-value{font-size:22px;font-weight:800;color:var(--goma-blue);line-height:1}
+.ocm-qty-enviado{font-size:13px;font-weight:600;color:var(--info);margin-left:auto}
+
+/* Meta row: estado, solicitante, badges */
 .ocm-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
 .ocm-qty{font-size:12px;color:var(--text-mid)}
-.ocm-actions{display:flex;gap:6px;margin-top:8px}
+.ocm-actions{display:flex;gap:6px;margin-top:10px}
 
 .empty-state{text-align:center;padding:36px 20px;color:var(--text-muted)}
 .empty-state svg{width:40px;height:40px;fill:var(--text-light);margin-bottom:12px}
@@ -549,14 +570,15 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
   }
   /* Direction blocks stacked */
   .direction-blocks{grid-template-columns:1fr;gap:12px;margin-top:14px}
-  /* Make dir-block headers bigger on mobile */
-  .dir-block-header{padding:16px 18px}
-  .dir-block-header .dir-title{font-size:15px;gap:10px}
-  .dir-block-header .dir-count{font-size:14px;padding:4px 14px}
+  /* Dir block headers bigger on mobile */
+  .dir-block-header{padding:18px}
+  .dir-block-header .dir-title{font-size:20px}
+  .dir-block-header .dir-count{font-size:20px;padding:6px 16px}
   /* Order cards mobile */
-  .order-card-mini{padding:13px 14px}
-  .ocm-code{font-size:14px}
-  .ocm-desc{font-size:13px}
+  .order-card-mini{padding:14px}
+  .ocm-code{font-size:16px}
+  .ocm-desc{font-size:14px}
+  .ocm-qty-value{font-size:26px}
   .ocm-actions{gap:8px;margin-top:10px}
   /* Hide table columns that overflow */
   .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -786,10 +808,10 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
             <div class="dir-block-header" onclick="openRutaAmpliada('Madryn→Trelew')">
               <div>
                 <span class="dir-title">
-                  <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
+                  <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
                   Madryn → Trelew
                 </span>
-                <div class="click-hint"><svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg> Tocá para ver pedidos</div>
+                <div class="click-hint" style="margin-top:4px"><svg width="10" height="10" fill="rgba(255,255,255,0.6)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> <span style="font-size:11px;color:rgba(255,255,255,0.55)">Tocá para preparar envíos</span></div>
               </div>
               <span class="dir-count" id="cnt-mt">0</span>
             </div>
@@ -799,10 +821,10 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
             <div class="dir-block-header" style="background:var(--primary-mid)" onclick="openRutaAmpliada('Trelew→Madryn')">
               <div>
                 <span class="dir-title">
-                  <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
+                  <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z"/></svg>
                   Trelew → Madryn
                 </span>
-                <div class="click-hint"><svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg> Tocá para ver pedidos</div>
+                <div class="click-hint" style="margin-top:4px"><svg width="10" height="10" fill="rgba(255,255,255,0.6)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> <span style="font-size:11px;color:rgba(255,255,255,0.55)">Tocá para preparar envíos</span></div>
               </div>
               <span class="dir-count" id="cnt-tm">0</span>
             </div>
@@ -1758,32 +1780,38 @@ function renderDirBlock(id, dir, orders, session){
   document.getElementById('cnt-'+id).textContent = pendingCount;
   const listEl = document.getElementById('list-'+id);
   if(!orders.length){
-    listEl.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg><p>Sin pedidos activos</p></div>`;
+    listEl.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg><p>Sin pedidos pendientes</p></div>';
     return;
   }
-  listEl.innerHTML = orders.map(o => `
-    <div class="order-card-mini">
-      <div class="ocm-top">
-        <div>
-          <div class="ocm-code">${o.codigo}</div>
-          <div class="ocm-desc">${o.descripcion}</div>
-        </div>
-        ${statusBadge(o.estado)}
-      </div>
-      <div class="ocm-meta">
-        <span class="ocm-qty">Pedido: <strong>${o.cantidadPedida}</strong></span>
-        ${o.cantidadEnviada!==null?`<span class="ocm-qty">Env: <strong>${o.cantidadEnviada}</strong></span>`:''}
-        <span style="font-size:11px;color:var(--text-light)">${o.fechaPedido} ${o.horaPedido}</span>
-        <span style="font-size:11px;color:var(--text-light)">por ${o.usuarioCreador}</span>
-        ${o.urgente?'<span class="badge badge-urgente">Urgente</span>':''}
-        ${o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':''}
-      </div>
-      <div class="ocm-actions">
-        <button class="btn btn-xs btn-secondary" onclick="showDetalle('${o.id}')">Ver detalle</button>
-        ${canEnviar(o,session)?`<button class="btn btn-xs btn-primary" onclick="openEnviar('${o.id}')">Enviar</button>`:''}
-      </div>
-    </div>
-  `).join('');
+  listEl.innerHTML = orders.map(function(o){
+    var enviado = (o.cantidadEnviada!==null&&o.cantidadEnviada!==undefined)
+      ? '<div class="ocm-qty-enviado">Enviado: <strong>'+o.cantidadEnviada+'</strong></div>'
+      : '';
+    var badges = (o.urgente?'<span class="badge badge-urgente">Urgente</span>':'') +
+                 (o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':'');
+    var btnEnviar = canEnviar(o,session)
+      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\''+o.id+'\')">Enviar</button>'
+      : '';
+    return '<div class="order-card-mini">' +
+      '<div class="ocm-top"><div style="flex:1;min-width:0">' +
+        '<div class="ocm-code">'+o.codigo+'</div>' +
+        '<div class="ocm-desc">'+o.descripcion+'</div>' +
+      '</div>'+statusBadge(o.estado)+'</div>' +
+      '<div class="ocm-qty-row"><div>' +
+        '<div class="ocm-qty-label">Cant. solicitada</div>' +
+        '<div class="ocm-qty-value">'+o.cantidadPedida+'</div>' +
+      '</div>'+enviado+'</div>' +
+      '<div class="ocm-meta">' +
+        '<span style="font-size:12px;color:var(--text-muted)">por <strong style="color:var(--text-mid)">'+o.usuarioCreador+'</strong></span>' +
+        '<span style="font-size:11px;color:var(--text-light)">'+o.fechaPedido+' '+o.horaPedido+'</span>' +
+        badges +
+      '</div>' +
+      '<div class="ocm-actions">' +
+        '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\''+o.id+'\')">Ver detalle</button>' +
+        btnEnviar +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function canEnviar(o,session){
