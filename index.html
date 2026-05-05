@@ -661,7 +661,18 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
     </div>
     <div id="login-err" class="login-err">Usuario o contraseña incorrectos.</div>
     <label for="li-user">Usuario</label>
-    <input type="text" id="li-user" placeholder="Ingrese su usuario" autocomplete="username">
+    <select id="li-user" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;margin-bottom:18px;transition:border-color 0.15s">
+      <option value="">Seleccioná tu usuario...</option>
+      <option value="lucas">Lucas</option>
+      <option value="victor">Victor</option>
+      <option value="simon">Simon</option>
+      <option value="deposito pm">DepositoPM</option>
+      <option value="luis">Luis</option>
+      <option value="peko">Peko</option>
+      <option value="admin">Admin</option>
+      <option value="madryn">Madryn</option>
+      <option value="trelew">Trelew</option>
+    </select>
     <label for="li-pass">Contraseña</label>
     <input type="password" id="li-pass" placeholder="Ingrese su contraseña" autocomplete="current-password">
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
@@ -777,7 +788,7 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
               </div>
               <div class="form-group">
                 <label>Cantidad *</label>
-                <input type="number" id="f-cantidad" min="1" placeholder="0">
+                <input type="text" id="f-cantidad" placeholder="Ej: 2, 1.5, Un juego...">
               </div>
             </div>
             <div class="form-row cols-2">
@@ -1636,7 +1647,9 @@ function navigate(page){
     const today = new Date().toISOString().split('T')[0];
     const hFecha = document.getElementById('h-fecha');
     const hDir = document.getElementById('h-dir');
+    const hTipo = document.getElementById('h-tipo');
     if(hFecha) hFecha.value = today;
+    if(hTipo) hTipo.value = 'enviado'; // por defecto: enviados
     if(hDir){
       if(session.sucursal === 'Trelew') hDir.value = 'Trelew\u2192Madryn';
       else if(session.sucursal === 'Madryn') hDir.value = 'Madryn\u2192Trelew';
@@ -1724,14 +1737,14 @@ function showFormAlert(msg, type='error'){
 async function savePedido(){
   const codigo = document.getElementById('f-codigo').value.trim();
   const descripcion = document.getElementById('f-descripcion').value.trim();
-  const cantidad = parseInt(document.getElementById('f-cantidad').value);
+  const cantidad = document.getElementById('f-cantidad').value.trim();
   const dir = document.getElementById('f-dir').value;
   const obs = document.getElementById('f-obs').value.trim();
   const urgente = document.getElementById('f-urgente').checked;
   const camioneta = document.getElementById('f-camioneta').checked;
   if(!codigo){ showFormAlert('El código del artículo es obligatorio.'); return; }
   if(!descripcion){ showFormAlert('La descripción del artículo es obligatoria.'); return; }
-  if(!cantidad||cantidad<=0){ showFormAlert('La cantidad pedida debe ser mayor a 0.'); return; }
+  if(!cantidad){ showFormAlert('La cantidad pedida es obligatoria.'); return; }
   if(!dir){ showFormAlert('La dirección es obligatoria.'); return; }
   const session = currentSession();
   const now = new Date();
@@ -1806,7 +1819,10 @@ function renderDirBlock(id, dir, orders, session){
     var btnEnviar = canEnviar(o,session)
       ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\''+o.id+'\')">Enviar</button>'
       : '';
-    return '<div class="order-card-mini">' +
+    var onCardClick = canEnviar(o,session)
+      ? 'openEnviar(\''+o.id+'\')'
+      : 'showDetalle(\''+o.id+'\')';
+    return '<div class="order-card-mini" onclick="'+onCardClick+'" style="cursor:pointer">' +
       '<div class="ocm-top"><div style="flex:1;min-width:0">' +
         '<div class="ocm-code">'+o.codigo+'</div>' +
         '<div class="ocm-desc">'+o.descripcion+'</div>' +
@@ -1820,7 +1836,7 @@ function renderDirBlock(id, dir, orders, session){
         '<span style="font-size:11px;color:var(--text-light)">'+o.fechaPedido+' '+o.horaPedido+'</span>' +
         badges +
       '</div>' +
-      '<div class="ocm-actions">' +
+      '<div class="ocm-actions" onclick="event.stopPropagation()">' +
         '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\''+o.id+'\')">Ver detalle</button>' +
         btnEnviar +
       '</div>' +
@@ -3289,6 +3305,10 @@ function buildUserSelect(id, defaultVal, style){
 // ═══════════════════════════════════════════
 //  SIDEBAR — CONTROL COMPLETO
 // ═══════════════════════════════════════════
+// Stubs globales (sobreescritos por el IIFE)
+function toggleSidebar(){ if(window._sidebarToggle) window._sidebarToggle(); }
+function closeSidebar(){ if(window._sidebarClose) window._sidebarClose(); }
+
 (function(){
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
@@ -3301,7 +3321,7 @@ function buildUserSelect(id, defaultVal, style){
     overlay.classList.add('open');
   }
 
-  function closeSidebar(){
+  function _closeSidebar(){
     clearTimeout(closeTimer);
     sidebar.classList.remove('sidebar-open');
     overlay.classList.remove('open');
@@ -3309,38 +3329,37 @@ function buildUserSelect(id, defaultVal, style){
 
   function scheduleClose(){
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(closeSidebar, DELAY);
+    closeTimer = setTimeout(_closeSidebar, DELAY);
   }
 
-  // Botón burger → toggle
-  window.toggleSidebar = function(){
-    if(sidebar.classList.contains('sidebar-open')) closeSidebar();
+  // Exponer globalmente
+  window._sidebarToggle = function(){
+    if(sidebar.classList.contains('sidebar-open')) _closeSidebar();
     else openSidebar();
   };
-  window.closeSidebar = closeSidebar;
+  window._sidebarClose = _closeSidebar;
+  window.toggleSidebar = window._sidebarToggle;
+  window.closeSidebar = _closeSidebar;
 
   // Overlay click → cerrar
-  if(overlay) overlay.addEventListener('click', closeSidebar);
+  if(overlay) overlay.addEventListener('click', _closeSidebar);
 
-  // Click dentro del sidebar en nav-item → cerrar después de 400ms
+  // Click en nav-item → cerrar después de 400ms
   sidebar.addEventListener('click', function(e){
-    if(e.target.closest('.nav-item') || e.target.closest('.nav-danger')){
+    if(e.target.closest('.nav-item')){
       clearTimeout(closeTimer);
-      closeTimer = setTimeout(closeSidebar, 400);
+      closeTimer = setTimeout(_closeSidebar, 400);
     } else {
-      // Clic en otra zona del sidebar → reiniciar timer
       scheduleClose();
     }
   });
 
-  // Desktop: zona de borde izquierdo para abrir con hover
-  // Crear zona trigger invisible de 8px en el borde izquierdo
+  // Desktop: zona trigger de 8px en borde izquierdo
   const triggerZone = document.createElement('div');
   triggerZone.style.cssText = 'position:fixed;left:0;top:0;bottom:0;width:8px;z-index:199;cursor:pointer';
   triggerZone.setAttribute('aria-hidden','true');
   document.body.appendChild(triggerZone);
 
-  // Desktop: hover sobre zona trigger abre sidebar
   const mq = window.matchMedia('(hover:hover) and (pointer:fine)');
   if(mq.matches){
     triggerZone.addEventListener('mouseenter', openSidebar);
@@ -3348,10 +3367,10 @@ function buildUserSelect(id, defaultVal, style){
     sidebar.addEventListener('mouseleave', scheduleClose);
   }
 
-  // Click fuera (no en overlay, que ya tiene handler) → cerrar
+  // Click fuera → cerrar
   document.addEventListener('click', function(e){
-    if(!sidebar.contains(e.target) && e.target !== overlay){
-      if(sidebar.classList.contains('sidebar-open')) closeSidebar();
+    if(!sidebar.contains(e.target) && e.target !== overlay && !triggerZone.contains(e.target)){
+      if(sidebar.classList.contains('sidebar-open')) _closeSidebar();
     }
   });
 })();
