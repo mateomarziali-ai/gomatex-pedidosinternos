@@ -131,19 +131,41 @@ table{border-collapse:collapse;width:100%}
 /* APP SHELL */
 #app{display:flex;height:100vh;overflow:hidden}
 
-/* SIDEBAR */
+/* SIDEBAR — colapsable con clase JS */
+:root { --sidebar-mini: 58px; }
+
 #sidebar{
-  width:var(--sidebar-w);flex-shrink:0;
+  width:var(--sidebar-mini);flex-shrink:0;
   background:var(--sidebar-bg);
   display:flex;flex-direction:column;
   position:relative;z-index:10;
-  transition:transform 0.25s ease;
+  transition:width 0.22s cubic-bezier(0.4,0,0.2,1);
+  overflow:hidden;
 }
+#sidebar.sidebar-expanded{ width:var(--sidebar-w); }
 #sidebar::before{
   content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,#0A1E96 0%,#071268 100%);
   pointer-events:none;
 }
+
+/* Estado MINI (sin .sidebar-expanded) */
+#sidebar:not(.sidebar-expanded) .sidebar-wordmark,
+#sidebar:not(.sidebar-expanded) .sidebar-tagline,
+#sidebar:not(.sidebar-expanded) .u-info,
+#sidebar:not(.sidebar-expanded) .nav-section,
+#sidebar:not(.sidebar-expanded) .nav-item span:not(.badge),
+#sidebar:not(.sidebar-expanded) .click-hint { display:none; }
+
+#sidebar:not(.sidebar-expanded) .sidebar-brand{ padding:12px;display:flex;justify-content:center }
+#sidebar:not(.sidebar-expanded) .sidebar-user{ padding:10px;justify-content:center }
+#sidebar:not(.sidebar-expanded) .u-avatar{ width:36px;height:36px;font-size:15px }
+#sidebar:not(.sidebar-expanded) .nav-item{ padding:12px;justify-content:center;border-left:none }
+#sidebar:not(.sidebar-expanded) .nav-item svg{ margin:0 }
+#sidebar:not(.sidebar-expanded) .nav-item.active{
+  background:rgba(255,255,255,0.18);border-radius:8px;margin:2px 8px;
+}
+
 .sidebar-brand{
   position:relative;z-index:1;
   padding:22px 22px 18px;
@@ -488,8 +510,27 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 .upload-zone strong{color:var(--goma-blue)}
 
 @media(max-width:768px){
-  #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%)}
-  #sidebar.open{transform:translateX(0)}
+  /* En mobile: sidebar oculto por defecto, se desliza con el botón burger */
+  #sidebar{
+    position:fixed;left:0;top:0;bottom:0;z-index:200;
+    width:var(--sidebar-w)!important;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow:visible;
+  }
+  #sidebar:hover{ width:var(--sidebar-w)!important; }
+  /* Restaurar todos los textos en mobile */
+  #sidebar .sidebar-wordmark,
+  #sidebar .sidebar-tagline,
+  #sidebar .u-info,
+  #sidebar .nav-section,
+  #sidebar .nav-item span,
+  #sidebar .click-hint{ display:revert!important; }
+  #sidebar .sidebar-brand{ padding:22px 22px 18px!important;display:flex!important;justify-content:flex-start!important }
+  #sidebar .sidebar-user{ padding:14px 22px!important;justify-content:flex-start!important }
+  #sidebar .u-avatar{ width:32px!important;height:32px!important;font-size:13px!important }
+  #sidebar .nav-item{ padding:10px 22px!important;justify-content:flex-start!important;border-left:3px solid transparent!important;margin:1px 0!important;border-radius:0!important }
+  #sidebar.open{ transform:translateX(0) }
   .topbar-burger{display:flex}
   .form-row.cols-3,.form-row.cols-4{grid-template-columns:1fr 1fr}
   .form-row.cols-2{grid-template-columns:1fr}
@@ -553,10 +594,6 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 
 /* ── MOBILE OPTIMIZATIONS ── */
 @media(max-width:768px){
-  /* Sidebar mobile */
-  #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%)}
-  #sidebar.open{transform:translateX(0)}
-  .topbar-burger{display:flex}
   /* Forms */
   .form-row.cols-3,.form-row.cols-4{grid-template-columns:1fr 1fr}
   .form-row.cols-2{grid-template-columns:1fr}
@@ -2143,61 +2180,137 @@ function renderRecibir(){
   const orders = _cache.orders;
   const session = currentSession();
   const container = document.getElementById('recibir-content');
-  let toReceive = orders.filter(o => o.estado==='ENVIADO'||o.estado==='ENVIADO CON FALTANTE');
-  if(session.rol!=='ADMIN'&&session.sucursal){
-    toReceive = toReceive.filter(o => o.direccion.split('\u2192')[1]===session.sucursal);
+
+  // Pedidos enviados pendientes de recepción
+  let toReceive = orders.filter(o =>
+    o.estado==='ENVIADO' || o.estado==='ENVIADO CON FALTANTE' || o.estado==='ENVIADO CON EXCEDENTE'
+  );
+
+  // Lógica de dirección:
+  // Madryn ve lo que le manda Trelew (destino = Madryn → Trelew→Madryn)
+  // Trelew ve lo que le manda Madryn (destino = Trelew → Madryn→Trelew)
+  if(session.rol!=='ADMIN' && session.sucursal){
+    toReceive = toReceive.filter(o => {
+      const destino = o.direccion.split('\u2192')[1];
+      return destino === session.sucursal;
+    });
   }
+
   toReceive.sort((a,b) => (b.fechaEnvio+b.horaEnvio).localeCompare(a.fechaEnvio+a.horaEnvio));
+
   if(!toReceive.length){
-    container.innerHTML = `<div class="empty-state" style="padding:48px 20px"><svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.53 15.48 1 12.19 1c-3.17 0-6.2 1.55-8.15 4.12L5.55 6.5C7.13 4.37 9.47 3 12.19 3c2.07 0 3.81 1.01 3.81 2.64C16 6.97 14.5 9 12 9H5v2h7c3.04 0 4.94 1.71 4.94 4.31C16.94 17.51 14.62 19 12.19 19c-2.6 0-5.07-1.3-6.9-3.48l-1.52 1.35C5.73 19.44 8.72 21 12.19 21c3.75 0 6.75-2.27 6.75-5.69 0-2.05-1.09-3.79-2.94-4.73V10H20V6z"/></svg><p>No hay mercanc\u00eda pendiente de recepci\u00f3n</p></div>`;
+    container.innerHTML = `
+      <div class="empty-state" style="padding:60px 20px">
+        <svg viewBox="0 0 24 24" style="width:52px;height:52px;fill:var(--text-light)"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        <p style="font-size:15px;font-weight:700;margin-bottom:6px">Sin mercadería pendiente</p>
+        <p style="font-size:13px">No hay envíos esperando confirmación de recepción</p>
+      </div>`;
     return;
   }
-  container.innerHTML = `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">${toReceive.length} env\u00edo${toReceive.length!==1?'s':''} pendiente${toReceive.length!==1?'s':''} de recepci\u00f3n</div>
-  ${toReceive.map(o=>`
-    <div class="card" style="margin-bottom:14px">
-      <div class="card-header">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="dir-badge">${o.direccion}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--primary)">${o.codigo}</span>
-          <span style="font-size:13px;color:var(--text-mid)">${o.descripcion}</span>
-          ${o.urgente?'<span class="badge badge-urgente">Urgente</span>':''}
-          ${o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':''}
-        </div>
-        ${statusBadge(o.estado)}
-      </div>
-      <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
-          <div class="info-item"><label>Cantidad Pedida</label><span>${o.cantidadPedida}</span></div>
-          <div class="info-item"><label>Cantidad Enviada</label><span style="font-weight:700;color:var(--info)">${o.cantidadEnviada}</span></div>
-          <div class="info-item"><label>Enviado por</label><span>${o.usuarioEnvio} \u2014 ${o.fechaEnvio} ${o.horaEnvio}</span></div>
-          ${o.preparadoPor?`<div class="info-item"><label>Preparado por</label><span style="font-weight:700;color:var(--primary)">${o.preparadoPor}</span></div>`:''}
-        </div>
-        ${o.observacionesEnvio?`<div class="info-item" style="margin-bottom:14px"><label>Obs. Env\u00edo</label><span>${o.observacionesEnvio}</span></div>`:''}
-        <div class="divider"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
-          <div class="form-group">
-            <label>Recibido por *</label>
-            <input type="text" id="rec-quien-${o.id}" placeholder="Nombre de quien recibe" value="${session.username||''}">
-          </div>
-          <div class="form-group">
-            <label>Cantidad Recibida *</label>
-            <input type="number" id="rec-qty-${o.id}" min="0" placeholder="0" value="${o.cantidadEnviada}">
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:8px">
-          <label>Observaciones de recepci\u00f3n</label>
-          <input type="text" id="rec-obs-${o.id}" placeholder="Notas opcionales...">
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-          <button class="btn btn-xs btn-secondary" onclick="showDetalle('${o.id}')">Ver detalle</button>
-          <button class="btn btn-success" onclick="confirmarRecepcionDirecta('${o.id}')">
-            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-            Confirmar recepci\u00f3n
-          </button>
-        </div>
+
+  const dirLabel = session.sucursal
+    ? (session.sucursal==='Madryn' ? 'Trelew \u2192 Madryn' : 'Madryn \u2192 Trelew')
+    : 'Todas las rutas';
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <span class="dir-badge" style="font-size:13px;padding:5px 12px">${dirLabel}</span>
+        <span style="font-size:13px;color:var(--text-muted);margin-left:10px">${toReceive.length} envío${toReceive.length!==1?'s':''} por confirmar</span>
       </div>
     </div>
-  `).join('')}`;
+    ${toReceive.map(o => {
+      const enviado = o.cantidadEnviada ?? 0;
+      return `
+      <div class="card" style="margin-bottom:16px;overflow:visible">
+        <!-- Header de la card -->
+        <div style="padding:14px 18px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:#fff">${o.codigo}</div>
+            <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:3px;font-weight:500">${o.descripcion}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
+            <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
+            ${o.urgente?'<span class="badge badge-urgente" style="margin-top:4px">Urgente</span>':''}
+          </div>
+        </div>
+
+        <!-- Comparación enviado vs recibido -->
+        <div style="padding:16px 18px">
+          <!-- Barra de cantidades -->
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:16px">
+            <div style="background:var(--info-bg);border-radius:var(--radius-lg);padding:14px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--info);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cantidad enviada</div>
+              <div style="font-size:36px;font-weight:800;color:var(--info);line-height:1">${enviado}</div>
+            </div>
+            <div style="font-size:20px;color:var(--text-light);font-weight:300">→</div>
+            <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center;border:2.5px solid var(--goma-blue)">
+              <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Cantidad recibida</div>
+              <input type="number" inputmode="numeric" id="rec-qty-${o.id}" min="0" value="${enviado}"
+                oninput="actualizarDiffRecibir('${o.id}', ${enviado})"
+                style="width:100%;font-size:32px;font-weight:800;text-align:center;border:none;background:transparent;color:var(--goma-blue);font-family:'Nunito',sans-serif;-moz-appearance:textfield;outline:none">
+            </div>
+          </div>
+
+          <!-- Indicador de diferencia -->
+          <div id="rec-diff-${o.id}" style="margin-bottom:14px"></div>
+
+          <!-- Recibido por y observaciones -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="form-group">
+              <label>Recibido por *</label>
+              <input type="text" id="rec-quien-${o.id}" value="${session.username||''}" placeholder="Nombre de quien recibe"
+                style="font-size:14px;padding:10px 12px">
+            </div>
+            <div class="form-group">
+              <label>Observaciones</label>
+              <input type="text" id="rec-obs-${o.id}" placeholder="Notas opcionales..."
+                style="font-size:14px;padding:10px 12px">
+            </div>
+          </div>
+
+          ${o.observacionesEnvio?`<div style="padding:8px 12px;background:var(--warning-bg);border-radius:var(--radius);font-size:12px;color:var(--warning);margin-bottom:12px"><strong>Obs. envío:</strong> ${o.observacionesEnvio}</div>`:''}
+
+          <!-- Botones de acción rápida -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-success" onclick="confirmarRecepcionDirecta('${o.id}')" style="flex:1;justify-content:center;padding:12px;font-size:14px">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Confirmar recepción
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="showDetalle('${o.id}')">Ver detalle</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
+
+  // Inicializar los indicadores de diferencia
+  toReceive.forEach(o => actualizarDiffRecibir(o.id, o.cantidadEnviada ?? 0));
+}
+
+function actualizarDiffRecibir(id, enviado){
+  const input = document.getElementById('rec-qty-'+id);
+  const diffEl = document.getElementById('rec-diff-'+id);
+  if(!input||!diffEl) return;
+  const recibido = parseInt(input.value);
+  if(isNaN(recibido)){ diffEl.innerHTML=''; return; }
+  const diff = recibido - enviado;
+  let html = '';
+  if(diff === 0){
+    html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#e0f5f0;border-radius:var(--radius);border-left:4px solid var(--success)">' +
+      '<svg width="18" height="18" fill="var(--success)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' +
+      '<span style="font-weight:700;color:var(--success);font-size:14px">✔ Cantidad correcta — llegó todo</span></div>';
+  } else if(diff < 0){
+    const abs = Math.abs(diff);
+    html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--warning-bg);border-radius:var(--radius);border-left:4px solid var(--warning)">' +
+      '<svg width="18" height="18" fill="var(--warning)" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>' +
+      '<span style="font-weight:700;color:var(--warning);font-size:14px">⚠ Faltante de '+abs+' unidad'+(abs!==1?'es':'')+'</span></div>';
+  } else {
+    html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f3e8ff;border-radius:var(--radius);border-left:4px solid #6B1AAA">' +
+      '<svg width="18" height="18" fill="#6B1AAA" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>' +
+      '<span style="font-weight:700;color:#6B1AAA;font-size:14px">↑ Sobrante de '+diff+' unidad'+(diff!==1?'es':'')+'</span></div>';
+  }
+  diffEl.innerHTML = html;
 }
 
 async function confirmarRecepcionDirecta(id){
@@ -3189,6 +3302,51 @@ async function borrarPedidos(tipo){
   showToast('\u2713 Pedidos borrados correctamente','success');
   renderInicio();
 }
+
+// ═══════════════════════════════════════════
+//  SIDEBAR — AUTO OCULTAMIENTO
+// ═══════════════════════════════════════════
+(function(){
+  const sidebar = document.getElementById('sidebar');
+  let closeTimer = null;
+  const DELAY = 2500; // ms antes de ocultar
+
+  function expandSidebar(){
+    clearTimeout(closeTimer);
+    sidebar.classList.add('sidebar-expanded');
+  }
+
+  function scheduleSidebarClose(){
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      sidebar.classList.remove('sidebar-expanded');
+    }, DELAY);
+  }
+
+  // Desktop: mouse entra → expandir; sale → temporizador cierre
+  sidebar.addEventListener('mouseenter', expandSidebar);
+  sidebar.addEventListener('mouseleave', scheduleSidebarClose);
+
+  // Click dentro del sidebar: cancelar cierre (el usuario está usando el menú)
+  sidebar.addEventListener('click', () => {
+    clearTimeout(closeTimer);
+    // Cerrar después de navegar (pequeño delay para que se vea la selección)
+    closeTimer = setTimeout(() => {
+      sidebar.classList.remove('sidebar-expanded');
+    }, 600);
+  });
+
+  // Click fuera del sidebar → cerrar inmediatamente
+  document.addEventListener('click', (e) => {
+    if(!sidebar.contains(e.target)){
+      clearTimeout(closeTimer);
+      sidebar.classList.remove('sidebar-expanded');
+    }
+  });
+
+  // En mobile: el sidebar ya se maneja con toggleSidebar() / closeSidebar()
+  // No aplicar el auto-hide en mobile (usa la clase .open en lugar de .sidebar-expanded)
+})();
 
 // ═══════════════════════════════════════════
 //  BOOT
