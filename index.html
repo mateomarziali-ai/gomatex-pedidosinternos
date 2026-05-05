@@ -1505,8 +1505,15 @@ function showLoader(show){
 //  INIT
 // ═══════════════════════════════════════════
 async function init(){
-  // Cargar datos de Supabase
-  await DB.load();
+  // Cargar datos de Supabase con timeout
+  try {
+    await Promise.race([
+      DB.load(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    ]);
+  } catch(e) {
+    console.warn('init: timeout o error cargando datos', e);
+  }
 
   // Poblar select de login con usuarios reales de Supabase
   poblarLoginSelect();
@@ -1529,10 +1536,33 @@ function poblarLoginSelect(){
   if(!sel) return;
   const users = _cache.users;
   if(!users.length){
-    sel.innerHTML = '<option value="">Sin usuarios disponibles</option>';
+    sel.innerHTML = '<option value="">Sin conexión — reintentá</option>';
+    // Mostrar botón de reintento debajo del select
+    let retryBtn = document.getElementById('login-retry-btn');
+    if(!retryBtn){
+      retryBtn = document.createElement('button');
+      retryBtn.id = 'login-retry-btn';
+      retryBtn.className = 'btn btn-secondary';
+      retryBtn.style.cssText = 'width:100%;margin-top:8px;margin-bottom:4px';
+      retryBtn.innerHTML = '↺ Reintentar conexión';
+      retryBtn.onclick = async () => {
+        retryBtn.textContent = 'Conectando...';
+        retryBtn.disabled = true;
+        await DB.load();
+        poblarLoginSelect();
+      };
+      sel.parentNode.insertBefore(retryBtn, sel.nextSibling);
+    } else {
+      retryBtn.style.display = '';
+      retryBtn.textContent = '↺ Reintentar conexión';
+      retryBtn.disabled = false;
+    }
     return;
   }
-  // Mostrar todos los usuarios ordenados (admin al final)
+  // Si hay usuarios, ocultar el botón de reintento si existía
+  const retryBtn = document.getElementById('login-retry-btn');
+  if(retryBtn) retryBtn.style.display = 'none';
+
   const sorted = [...users].sort((a,b) => {
     if(a.username==='admin') return 1;
     if(b.username==='admin') return -1;
