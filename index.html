@@ -1505,25 +1505,12 @@ function showLoader(show){
 //  INIT
 // ═══════════════════════════════════════════
 async function init(){
-  try {
-    await Promise.race([
-      DB.load(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
-    ]);
-  } catch(e) {
-    console.warn('init: timeout o error cargando datos', e);
-  } finally {
-    showLoader(false); // siempre ocultar el loader
-  }
-
+  await DB.load();
   poblarLoginSelect();
-
   const session = DB.getSession();
   if(session){ showApp(session); }
-
   setFormDateTime();
   setInterval(setFormDateTime, 30000);
-
   document.addEventListener('click', e => {
     if(!e.target.closest('.autocomplete-wrap')){
       document.querySelectorAll('.autocomplete-list').forEach(el => el.classList.remove('open'));
@@ -1536,33 +1523,9 @@ function poblarLoginSelect(){
   if(!sel) return;
   const users = _cache.users;
   if(!users.length){
-    sel.innerHTML = '<option value="">Sin conexión — reintentá</option>';
-    // Mostrar botón de reintento debajo del select
-    let retryBtn = document.getElementById('login-retry-btn');
-    if(!retryBtn){
-      retryBtn = document.createElement('button');
-      retryBtn.id = 'login-retry-btn';
-      retryBtn.className = 'btn btn-secondary';
-      retryBtn.style.cssText = 'width:100%;margin-top:8px;margin-bottom:4px';
-      retryBtn.innerHTML = '↺ Reintentar conexión';
-      retryBtn.onclick = async () => {
-        retryBtn.textContent = 'Conectando...';
-        retryBtn.disabled = true;
-        await DB.load();
-        poblarLoginSelect();
-      };
-      sel.parentNode.insertBefore(retryBtn, sel.nextSibling);
-    } else {
-      retryBtn.style.display = '';
-      retryBtn.textContent = '↺ Reintentar conexión';
-      retryBtn.disabled = false;
-    }
+    sel.innerHTML = '<option value="">Error de conexión — recargá la página</option>';
     return;
   }
-  // Si hay usuarios, ocultar el botón de reintento si existía
-  const retryBtn = document.getElementById('login-retry-btn');
-  if(retryBtn) retryBtn.style.display = 'none';
-
   const sorted = [...users].sort((a,b) => {
     if(a.username==='admin') return 1;
     if(b.username==='admin') return -1;
@@ -1810,7 +1773,6 @@ function showFormAlert(msg, type='error'){
   span.textContent = msg;
   div.appendChild(span);
   container.appendChild(div);
-}
 }
 
 async function savePedido(){
