@@ -1505,7 +1505,6 @@ function showLoader(show){
 //  INIT
 // ═══════════════════════════════════════════
 async function init(){
-  // Cargar datos de Supabase con timeout
   try {
     await Promise.race([
       DB.load(),
@@ -1513,9 +1512,10 @@ async function init(){
     ]);
   } catch(e) {
     console.warn('init: timeout o error cargando datos', e);
+  } finally {
+    showLoader(false); // siempre ocultar el loader
   }
 
-  // Poblar select de login con usuarios reales de Supabase
   poblarLoginSelect();
 
   const session = DB.getSession();
