@@ -130,42 +130,33 @@ table{border-collapse:collapse;width:100%}
 
 /* APP SHELL */
 #app{display:flex;height:100vh;overflow:hidden}
+.topbar-burger{display:flex;background:none;padding:6px;border-radius:6px;color:var(--text-mid)}
+.topbar-burger:hover{background:var(--bg)}
+.topbar-burger svg{width:20px;height:20px;fill:currentColor}
 
-/* SIDEBAR — colapsable con clase JS */
-:root { --sidebar-mini: 58px; }
-
+/* SIDEBAR — completamente oculto por defecto */
 #sidebar{
-  width:var(--sidebar-mini);flex-shrink:0;
+  width:var(--sidebar-w);
   background:var(--sidebar-bg);
   display:flex;flex-direction:column;
-  position:relative;z-index:10;
-  transition:width 0.22s cubic-bezier(0.4,0,0.2,1);
+  position:fixed;left:0;top:0;bottom:0;
+  z-index:200;
+  transform:translateX(-100%);
+  transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
   overflow:hidden;
+  pointer-events:none;
+  box-shadow:none;
 }
-#sidebar.sidebar-expanded{ width:var(--sidebar-w); }
+#sidebar.sidebar-open{
+  transform:translateX(0);
+  pointer-events:auto;
+  box-shadow:4px 0 24px rgba(13,32,150,0.25);
+}
 #sidebar::before{
   content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,#0A1E96 0%,#071268 100%);
   pointer-events:none;
 }
-
-/* Estado MINI (sin .sidebar-expanded) */
-#sidebar:not(.sidebar-expanded) .sidebar-wordmark,
-#sidebar:not(.sidebar-expanded) .sidebar-tagline,
-#sidebar:not(.sidebar-expanded) .u-info,
-#sidebar:not(.sidebar-expanded) .nav-section,
-#sidebar:not(.sidebar-expanded) .nav-item span:not(.badge),
-#sidebar:not(.sidebar-expanded) .click-hint { display:none; }
-
-#sidebar:not(.sidebar-expanded) .sidebar-brand{ padding:12px;display:flex;justify-content:center }
-#sidebar:not(.sidebar-expanded) .sidebar-user{ padding:10px;justify-content:center }
-#sidebar:not(.sidebar-expanded) .u-avatar{ width:36px;height:36px;font-size:15px }
-#sidebar:not(.sidebar-expanded) .nav-item{ padding:12px;justify-content:center;border-left:none }
-#sidebar:not(.sidebar-expanded) .nav-item svg{ margin:0 }
-#sidebar:not(.sidebar-expanded) .nav-item.active{
-  background:rgba(255,255,255,0.18);border-radius:8px;margin:2px 8px;
-}
-
 .sidebar-brand{
   position:relative;z-index:1;
   padding:22px 22px 18px;
@@ -230,9 +221,7 @@ table{border-collapse:collapse;width:100%}
   display:flex;align-items:center;padding:0 24px;gap:12px;
   box-shadow:0 1px 0 var(--border);
 }
-.topbar-burger{display:none;background:none;padding:6px;border-radius:6px;color:var(--text-mid)}
-.topbar-burger:hover{background:var(--bg)}
-.topbar-burger svg{width:20px;height:20px;fill:currentColor}
+.topbar-burger-placeholder{display:none}
 #topbar-title{
   font-size:15px;font-weight:800;color:var(--primary);
   letter-spacing:-0.3px;font-family:'Nunito',sans-serif;
@@ -510,28 +499,6 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 .upload-zone strong{color:var(--goma-blue)}
 
 @media(max-width:768px){
-  /* En mobile: sidebar oculto por defecto, se desliza con el botón burger */
-  #sidebar{
-    position:fixed;left:0;top:0;bottom:0;z-index:200;
-    width:var(--sidebar-w)!important;
-    transform:translateX(-100%);
-    transition:transform 0.25s ease;
-    overflow:visible;
-  }
-  #sidebar:hover{ width:var(--sidebar-w)!important; }
-  /* Restaurar todos los textos en mobile */
-  #sidebar .sidebar-wordmark,
-  #sidebar .sidebar-tagline,
-  #sidebar .u-info,
-  #sidebar .nav-section,
-  #sidebar .nav-item span,
-  #sidebar .click-hint{ display:revert!important; }
-  #sidebar .sidebar-brand{ padding:22px 22px 18px!important;display:flex!important;justify-content:flex-start!important }
-  #sidebar .sidebar-user{ padding:14px 22px!important;justify-content:flex-start!important }
-  #sidebar .u-avatar{ width:32px!important;height:32px!important;font-size:13px!important }
-  #sidebar .nav-item{ padding:10px 22px!important;justify-content:flex-start!important;border-left:3px solid transparent!important;margin:1px 0!important;border-radius:0!important }
-  #sidebar.open{ transform:translateX(0) }
-  .topbar-burger{display:flex}
   .form-row.cols-3,.form-row.cols-4{grid-template-columns:1fr 1fr}
   .form-row.cols-2{grid-template-columns:1fr}
   #content{padding:14px 16px}
@@ -1683,14 +1650,7 @@ function navigate(page){
   if(page === 'metricas'){ renderMetricas(); }
 }
 
-function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('open');
-}
-function closeSidebar(){
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('open');
-}
+// toggleSidebar y closeSidebar se definen en el bloque SIDEBAR al final
 
 // ═══════════════════════════════════════════
 //  MODALS
@@ -3327,48 +3287,73 @@ function buildUserSelect(id, defaultVal, style){
 }
 
 // ═══════════════════════════════════════════
-//  SIDEBAR — AUTO OCULTAMIENTO
+//  SIDEBAR — CONTROL COMPLETO
 // ═══════════════════════════════════════════
 (function(){
   const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
   let closeTimer = null;
-  const DELAY = 2500; // ms antes de ocultar
+  const DELAY = 2500;
 
-  function expandSidebar(){
+  function openSidebar(){
     clearTimeout(closeTimer);
-    sidebar.classList.add('sidebar-expanded');
+    sidebar.classList.add('sidebar-open');
+    overlay.classList.add('open');
   }
 
-  function scheduleSidebarClose(){
+  function closeSidebar(){
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(() => {
-      sidebar.classList.remove('sidebar-expanded');
-    }, DELAY);
+    sidebar.classList.remove('sidebar-open');
+    overlay.classList.remove('open');
   }
 
-  // Desktop: mouse entra → expandir; sale → temporizador cierre
-  sidebar.addEventListener('mouseenter', expandSidebar);
-  sidebar.addEventListener('mouseleave', scheduleSidebarClose);
-
-  // Click dentro del sidebar: cancelar cierre (el usuario está usando el menú)
-  sidebar.addEventListener('click', () => {
+  function scheduleClose(){
     clearTimeout(closeTimer);
-    // Cerrar después de navegar (pequeño delay para que se vea la selección)
-    closeTimer = setTimeout(() => {
-      sidebar.classList.remove('sidebar-expanded');
-    }, 600);
-  });
+    closeTimer = setTimeout(closeSidebar, DELAY);
+  }
 
-  // Click fuera del sidebar → cerrar inmediatamente
-  document.addEventListener('click', (e) => {
-    if(!sidebar.contains(e.target)){
+  // Botón burger → toggle
+  window.toggleSidebar = function(){
+    if(sidebar.classList.contains('sidebar-open')) closeSidebar();
+    else openSidebar();
+  };
+  window.closeSidebar = closeSidebar;
+
+  // Overlay click → cerrar
+  if(overlay) overlay.addEventListener('click', closeSidebar);
+
+  // Click dentro del sidebar en nav-item → cerrar después de 400ms
+  sidebar.addEventListener('click', function(e){
+    if(e.target.closest('.nav-item') || e.target.closest('.nav-danger')){
       clearTimeout(closeTimer);
-      sidebar.classList.remove('sidebar-expanded');
+      closeTimer = setTimeout(closeSidebar, 400);
+    } else {
+      // Clic en otra zona del sidebar → reiniciar timer
+      scheduleClose();
     }
   });
 
-  // En mobile: el sidebar ya se maneja con toggleSidebar() / closeSidebar()
-  // No aplicar el auto-hide en mobile (usa la clase .open en lugar de .sidebar-expanded)
+  // Desktop: zona de borde izquierdo para abrir con hover
+  // Crear zona trigger invisible de 8px en el borde izquierdo
+  const triggerZone = document.createElement('div');
+  triggerZone.style.cssText = 'position:fixed;left:0;top:0;bottom:0;width:8px;z-index:199;cursor:pointer';
+  triggerZone.setAttribute('aria-hidden','true');
+  document.body.appendChild(triggerZone);
+
+  // Desktop: hover sobre zona trigger abre sidebar
+  const mq = window.matchMedia('(hover:hover) and (pointer:fine)');
+  if(mq.matches){
+    triggerZone.addEventListener('mouseenter', openSidebar);
+    sidebar.addEventListener('mouseenter', function(){ clearTimeout(closeTimer); });
+    sidebar.addEventListener('mouseleave', scheduleClose);
+  }
+
+  // Click fuera (no en overlay, que ya tiene handler) → cerrar
+  document.addEventListener('click', function(e){
+    if(!sidebar.contains(e.target) && e.target !== overlay){
+      if(sidebar.classList.contains('sidebar-open')) closeSidebar();
+    }
+  });
 })();
 
 // ═══════════════════════════════════════════
