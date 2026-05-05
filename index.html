@@ -1095,7 +1095,10 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
       <div class="divider"></div>
       <div class="form-group" style="margin-bottom:12px">
         <label>Preparado por *</label>
-        <input type="text" id="env-preparador" placeholder="Nombre de quien prepara la mercadería">
+        <input type="text" id="env-preparador" placeholder="Nombre de quien prepara la mercadería" style="display:none">
+        <select id="env-preparador-sel" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:14px;background:var(--surface2)">
+          <option value="">Seleccionar...</option>
+        </select>
       </div>
       <div class="form-group" style="margin-bottom:12px">
         <label>Cantidad Enviada *</label>
@@ -1927,8 +1930,8 @@ function openRutaAmpliada(dir){
       </div>
       <div class="form-group" style="margin-bottom:10px">
         <label style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.5px">Preparado por *</label>
-        <input type="text" id="ruta-prep-${o.id}" placeholder="Nombre de quien prepara"
-          style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:15px;background:var(--surface2)">
+        ${buildUserSelect('ruta-prep-sel-'+o.id, currentSession().username, 'width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:\'Nunito\',sans-serif;font-size:15px;background:var(--surface2)')}
+        <input type="hidden" id="ruta-prep-${o.id}">
       </div>
       <div class="form-group" style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.5px">Observaciones (opcional)</label>
@@ -1943,14 +1946,6 @@ function openRutaAmpliada(dir){
     </div>
   `).join('');
   openModal('modal-ruta');
-  // Autocompletar preparador con usuario logueado en todos los campos
-  const session2 = currentSession();
-  if(session2.username){
-    pending.forEach(o => {
-      const prep = document.getElementById('ruta-prep-'+o.id);
-      if(prep && !prep.value) prep.value = session2.username;
-    });
-  }
 }
 
 async function confirmarEnvioRuta(id){
@@ -1958,10 +1953,10 @@ async function confirmarEnvioRuta(id){
   const idx = orders.findIndex(x => x.id===id);
   if(idx===-1) return;
   const o = orders[idx];
-  const preparador = document.getElementById('ruta-prep-'+id)?.value.trim()||'';
+  const preparador = (document.getElementById('ruta-prep-sel-'+id)?.value || document.getElementById('ruta-prep-'+id)?.value || '').trim();
   const cant = parseInt(document.getElementById('ruta-qty-'+id)?.value);
   let obs = document.getElementById('ruta-obs-'+id)?.value.trim()||'';
-  if(!preparador){ alert('Ingres\u00e1 el nombre de quien prepara la mercader\u00eda.'); return; }
+  if(!preparador){ alert('Selecci\u00f3n\u00e1 qui\u00e9n prepara la mercader\u00eda.'); return; }
   if(!cant||cant<1){ alert('Ingres\u00e1 la cantidad a enviar.'); return; }
 
   // Determinar estado
@@ -2007,7 +2002,15 @@ function openEnviar(id){
   const o = _cache.orders.find(x => x.id===id);
   if(!o) return;
   const session = currentSession();
-  document.getElementById('env-preparador').value = session.username || '';
+  // Poblar select preparador
+  const prepSel = document.getElementById('env-preparador-sel');
+  if(prepSel){
+    const defVal = session.username;
+    const match = USUARIOS_OPERATIVOS.find(u => u.toLowerCase()===(defVal||'').toLowerCase()) || USUARIOS_OPERATIVOS[0];
+    prepSel.innerHTML = USUARIOS_OPERATIVOS.map(u =>
+      '<option value="'+u+'"'+(u===match?' selected':'')+'>'+u+'</option>'
+    ).join('');
+  }
   document.getElementById('env-cantidad').value = '';
   document.getElementById('env-obs').value = '';
   document.getElementById('env-max-hint').textContent = 'Solicitado: ' + o.cantidadPedida + '. Pod\u00e9s enviar m\u00e1s o menos.';
@@ -2022,10 +2025,10 @@ async function confirmEnvio(){
   const idx = orders.findIndex(x => x.id===currentOrderId);
   if(idx===-1) return;
   const o = orders[idx];
-  const preparador = document.getElementById('env-preparador').value.trim();
+  const preparador = (document.getElementById('env-preparador-sel')?.value || '').trim();
   const cant = parseInt(document.getElementById('env-cantidad').value);
   let obs = document.getElementById('env-obs').value.trim();
-  if(!preparador){ alert('Ingres\u00e1 el nombre de quien prepara la mercader\u00eda.'); return; }
+  if(!preparador){ alert('Selecci\u00f3n\u00e1 qui\u00e9n prepara la mercader\u00eda.'); return; }
   if(!cant||cant<1){ alert('La cantidad enviada debe ser mayor a 0.'); return; }
 
   // Determinar estado
@@ -2260,8 +2263,7 @@ function renderRecibir(){
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div class="form-group">
               <label>Recibido por *</label>
-              <input type="text" id="rec-quien-${o.id}" value="${session.username||''}" placeholder="Nombre de quien recibe"
-                style="font-size:14px;padding:10px 12px">
+              ${buildUserSelect('rec-quien-'+o.id, session.username, 'width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:\'Nunito\',sans-serif;font-size:14px;background:var(--surface2)')}
             </div>
             <div class="form-group">
               <label>Observaciones</label>
@@ -2318,10 +2320,10 @@ async function confirmarRecepcionDirecta(id){
   const idx = orders.findIndex(x => x.id===id);
   if(idx===-1) return;
   const o = orders[idx];
-  const recibidoPor = document.getElementById('rec-quien-'+id)?.value.trim()||'';
+  const recibidoPor = (document.getElementById('rec-quien-'+id)?.value || '').trim();
   const cant = parseInt(document.getElementById('rec-qty-'+id).value);
   const obs = document.getElementById('rec-obs-'+id)?.value.trim()||'';
-  if(!recibidoPor){ alert('Ingres\u00e1 el nombre de quien recibe la mercader\u00eda.'); return; }
+  if(!recibidoPor){ alert('Selecci\u00f3n\u00e1 qui\u00e9n recibe la mercader\u00eda.'); return; }
   if(isNaN(cant)||cant<0){ alert('La cantidad recibida no puede ser negativa.'); return; }
   const session = currentSession();
   const now = new Date();
@@ -3301,6 +3303,27 @@ async function borrarPedidos(tipo){
   closeModal('modal-borrar');
   showToast('\u2713 Pedidos borrados correctamente','success');
   renderInicio();
+}
+
+// ═══════════════════════════════════════════
+//  USUARIOS OPERATIVOS — lista fija para dropdowns
+// ═══════════════════════════════════════════
+const USUARIOS_OPERATIVOS = ['Lucas','Victor','Simon','DepositoPM','Luis','Peko'];
+
+function buildUserSelect(id, defaultVal, style){
+  const session = currentSession();
+  // Valor por defecto: usuario logueado (case-insensitive match) o primero de la lista
+  let defVal = defaultVal || session.username || '';
+  // Intentar hacer match con la lista (case-insensitive)
+  const match = USUARIOS_OPERATIVOS.find(u => u.toLowerCase() === defVal.toLowerCase());
+  if(match) defVal = match;
+  else if(!USUARIOS_OPERATIVOS.includes(defVal)) defVal = USUARIOS_OPERATIVOS[0];
+
+  const opts = USUARIOS_OPERATIVOS.map(u =>
+    '<option value="'+u+'"'+(u===defVal?' selected':'')+'>'+u+'</option>'
+  ).join('');
+  const st = style || 'width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:\'Nunito\',sans-serif;font-size:14px;background:var(--surface2)';
+  return '<select id="'+id+'" style="'+st+'">'+opts+'</select>';
 }
 
 // ═══════════════════════════════════════════
