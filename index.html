@@ -1879,39 +1879,52 @@ function renderDirBlock(id, dir, orders, session){
     return;
   }
   listEl.innerHTML = orders.map(function(o){
-    var enviado = (o.cantidadEnviada!==null&&o.cantidadEnviada!==undefined)
-      ? '<div class="ocm-qty-enviado">Enviado: <strong>'+o.cantidadEnviada+'</strong></div>'
+    var badgeUrgente = o.urgente
+      ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--warning-bg);border-radius:var(--radius);padding:10px 8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.3px">Urgente / Vendido</span></div>'
       : '';
-    var badges = (o.urgente?'<span class="badge badge-urgente">Urgente</span>':'') +
-                 (o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':'');
+    var badgeStock = o.camioneta
+      ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#E8F8F0;border-radius:var(--radius);padding:10px 8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:#0A6B3A;text-transform:uppercase;letter-spacing:0.3px">Stock</span></div>'
+      : '';
+    var badgesRight = (badgeUrgente || badgeStock)
+      ? '<div style="display:flex;gap:6px;flex:1;min-width:80px">' + badgeUrgente + badgeStock + '</div>'
+      : '<div style="flex:1"></div>';
     var btnEnviar = canEnviar(o,session)
-      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\''+o.id+'\')">Enviar</button>'
+      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\'' + o.id + '\')">Enviar</button>'
       : '';
     var onCardClick = canEnviar(o,session)
-      ? 'openEnviar(\''+o.id+'\')'
-      : 'showDetalle(\''+o.id+'\')';
-    return '<div class="order-card-mini" onclick="'+onCardClick+'" style="cursor:pointer">' +
-      '<div class="ocm-top"><div style="flex:1;min-width:0">' +
-        '<div class="ocm-code">'+o.codigo+'</div>' +
-        '<div class="ocm-desc">'+o.descripcion+'</div>' +
-      '</div>'+statusBadge(o.estado)+'</div>' +
-      '<div class="ocm-qty-row"><div>' +
-        '<div class="ocm-qty-label">Cant. solicitada</div>' +
-        '<div class="ocm-qty-value">'+o.cantidadPedida+'</div>' +
-      '</div>'+enviado+'</div>' +
-      '<div class="ocm-meta">' +
-        '<span style="font-size:12px;color:var(--text-muted)">por <strong style="color:var(--text-mid)">'+o.usuarioCreador+'</strong></span>' +
-        '<span style="font-size:11px;color:var(--text-light)">'+o.fechaPedido+' '+o.horaPedido+'</span>' +
-        badges +
+      ? "openEnviar(\'" + o.id + "\')"
+      : "showDetalle(\'" + o.id + "\')";
+    return '<div class="order-card-mini" onclick="' + onCardClick + '" style="cursor:pointer">' +
+      // Fila 1: código · descripción en mismo renglón + badge estado
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden">' +
+          '<span class="ocm-code" style="flex-shrink:0">' + o.codigo + '</span>' +
+          '<span style="color:var(--text-light);flex-shrink:0;font-size:14px">&middot;</span>' +
+          '<span class="ocm-desc" style="margin-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
+        '</div>' + statusBadge(o.estado) +
       '</div>' +
+      // Fila 2: cant solicitada (mitad izq) | badges stock/urgente (mitad der)
+      '<div style="display:flex;gap:10px;align-items:stretch;margin-bottom:10px">' +
+        '<div class="ocm-qty-row" style="flex:1;margin-bottom:0">' +
+          '<div>' +
+            '<div class="ocm-qty-label">Cant. solicitada</div>' +
+            '<div class="ocm-qty-value">' + o.cantidadPedida + '</div>' +
+          '</div>' +
+        '</div>' + badgesRight +
+      '</div>' +
+      // Fila 3: quién solicita + fecha y hora
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
+        '<span style="font-size:12px;color:var(--text-muted)">Solicit\u00f3: <strong style="color:var(--text-mid)">' + o.usuarioCreador + '</strong></span>' +
+        '<span style="font-size:11px;color:var(--text-light)">' + o.fechaPedido + ' ' + o.horaPedido + '</span>' +
+      '</div>' +
+      // Acciones
       '<div class="ocm-actions" onclick="event.stopPropagation()">' +
-        '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\''+o.id+'\')">Ver detalle</button>' +
+        '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\'' + o.id + '\')">Ver detalle</button>' +
         btnEnviar +
       '</div>' +
     '</div>';
   }).join('');
 }
-
 function canEnviar(o,session){
   if(o.estado!=='PENDIENTE') return false;
   if(session.rol==='ADMIN') return true;
