@@ -2820,12 +2820,21 @@ function imprimirDia(){
 
   var html = '<div style="font-family:Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto">';
 
-  // Encabezado grande
-  html += '<div style="margin-bottom:24px;border-bottom:3px solid #000;padding-bottom:16px">';
-  html += '<div style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">';
-  html += 'LISTADO PARA REALIZAR TRANSFERENCIA &ndash; ' + rutaLabel;
+  // Encabezado: gomatex | ruta grande | fecha + hora
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:3px solid #000;gap:16px">';
+  // Izquierda: logo + ruta
+  html += '<div>';
+  html += '<div style="display:flex;align-items:baseline;gap:14px">';
+  html += '<span style="font-size:22px;font-weight:900;letter-spacing:-0.5px">gomatex</span>';
+  html += '<span style="font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px">' + rutaLabel + '</span>';
   html += '</div>';
-  html += '<div style="font-size:16px;font-weight:600;color:#333">' + fechaFormateada + ' &ndash; ' + horaFormateada + '</div>';
+  html += '<div style="font-size:12px;color:#555;margin-top:4px;text-transform:uppercase;letter-spacing:1px">Listado para realizar transferencia</div>';
+  html += '</div>';
+  // Derecha: fecha + hora
+  html += '<div style="text-align:right;white-space:nowrap">';
+  html += '<div style="font-size:18px;font-weight:700">' + fechaFormateada + '</div>';
+  html += '<div style="font-size:16px;font-weight:600;color:#333">' + horaFormateada + '</div>';
+  html += '</div>';
   html += '</div>';
 
   // Tabla simple y grande
