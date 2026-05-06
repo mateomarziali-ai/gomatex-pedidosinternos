@@ -830,14 +830,17 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
                 <textarea id="f-obs" placeholder="Notas opcionales del pedido..."></textarea>
               </div>
               <div class="form-group">
-                <label>Opciones adicionales</label>
+                <label>Opciones adicionales <span style="color:var(--danger);font-size:10px">* Seleccioná al menos una</span></label>
                 <div class="form-check">
-                  <input type="checkbox" id="f-urgente">
+                  <input type="checkbox" id="f-urgente" onchange="validarOpcionesAdicionales()">
                   <label for="f-urgente">Urgente / Vendido</label>
                 </div>
                 <div class="form-check">
-                  <input type="checkbox" id="f-camioneta">
+                  <input type="checkbox" id="f-camioneta" onchange="validarOpcionesAdicionales()">
                   <label for="f-camioneta">Stock</label>
+                </div>
+                <div id="opciones-alert" style="display:none;margin-top:6px;font-size:12px;color:var(--danger);font-weight:600">
+                  ⚠ Seleccioná Urgente/Vendido o Stock
                 </div>
               </div>
             </div>
@@ -1785,6 +1788,8 @@ function resetForm(){
   document.getElementById('f-obs').value = '';
   document.getElementById('f-urgente').checked = false;
   document.getElementById('f-camioneta').checked = false;
+  const opAlert = document.getElementById('opciones-alert');
+  if(opAlert) opAlert.style.display = 'none';
   document.getElementById('form-alert').innerHTML = '';
   setFormDateTime();
 }
@@ -1802,6 +1807,13 @@ function showFormAlert(msg, type='error'){
   container.appendChild(div);
 }
 
+function validarOpcionesAdicionales(){
+  const urgente = document.getElementById('f-urgente')?.checked;
+  const camioneta = document.getElementById('f-camioneta')?.checked;
+  const alert = document.getElementById('opciones-alert');
+  if(alert) alert.style.display = (!urgente && !camioneta) ? 'block' : 'none';
+}
+
 async function savePedido(){
   const codigo = document.getElementById('f-codigo').value.trim();
   const descripcion = document.getElementById('f-descripcion').value.trim();
@@ -1814,6 +1826,7 @@ async function savePedido(){
   if(!descripcion){ showFormAlert('La descripción del artículo es obligatoria.'); return; }
   if(!cantidad){ showFormAlert('La cantidad pedida es obligatoria.'); return; }
   if(!dir){ showFormAlert('La dirección es obligatoria.'); return; }
+  if(!urgente && !camioneta){ showFormAlert('Seleccioná al menos una opción: Urgente/Vendido o Stock.'); return; }
   const session = currentSession();
   const now = new Date();
   const order = {
@@ -2282,15 +2295,22 @@ function renderRecibir(){
       return `
       <div class="card" style="margin-bottom:16px;overflow:visible">
         <!-- Header de la card -->
-        <div style="padding:14px 18px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div>
-            <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:#fff">${o.codigo}</div>
-            <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:3px;font-weight:500">${o.descripcion}</div>
+        <div style="padding:16px 18px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+          <!-- Fila 1: código + descripción a lo largo -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-family:'DM Mono',monospace;font-size:17px;font-weight:700;color:#fff;flex-shrink:0">${o.codigo}</span>
+            <span style="font-size:15px;color:rgba(255,255,255,0.88);font-weight:600;flex:1">${o.descripcion}</span>
           </div>
-          <div style="text-align:right">
-            <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
-            <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
-            ${o.urgente?'<span class="badge badge-urgente" style="margin-top:4px">Urgente</span>':''}
+          <!-- Fila 2: badges grandes + enviado por -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;gap:8px">
+              ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.4);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">⚡ Urgente / Vendido</span>':''}
+              ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.4);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">📦 Stock</span>':''}
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
+              <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
+            </div>
           </div>
         </div>
 
