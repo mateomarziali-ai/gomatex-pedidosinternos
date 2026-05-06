@@ -2296,18 +2296,24 @@ function renderRecibir(){
 
         <!-- Comparación enviado vs recibido -->
         <div style="padding:16px 18px">
-          <!-- Barra de cantidades -->
-          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:16px">
-            <div style="background:var(--info-bg);border-radius:var(--radius-lg);padding:14px;text-align:center">
-              <div style="font-size:10px;font-weight:700;color:var(--info);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cantidad enviada</div>
-              <div style="font-size:36px;font-weight:800;color:var(--info);line-height:1">${enviado}</div>
+          <!-- 3 bloques de cantidades -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:center;margin-bottom:16px">
+            <!-- Solicitada -->
+            <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cant. Solicitada</div>
+              <div style="font-size:32px;font-weight:800;color:var(--goma-blue);line-height:1">${o.cantidadPedida}</div>
             </div>
-            <div style="font-size:20px;color:var(--text-light);font-weight:300">→</div>
-            <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center;border:2.5px solid var(--goma-blue)">
-              <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Cantidad recibida</div>
-              <input type="text" id="rec-qty-${o.id}" placeholder="Ej: 1, 1.5, un juego..." value="${enviado}"
+            <!-- Enviada -->
+            <div style="background:var(--info-bg);border-radius:var(--radius-lg);padding:14px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--info);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cant. Enviada</div>
+              <div style="font-size:32px;font-weight:800;color:var(--info);line-height:1">${enviado}</div>
+            </div>
+            <!-- Recibida — input vacío, el usuario completa -->
+            <div style="background:#fff;border-radius:var(--radius-lg);padding:14px;text-align:center;border:2.5px solid var(--success)">
+              <div style="font-size:10px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Cant. Recibida</div>
+              <input type="text" id="rec-qty-${o.id}" placeholder="0"
                 oninput="actualizarDiffRecibir('${o.id}', ${enviado})"
-                style="width:100%;font-size:32px;font-weight:800;text-align:center;border:none;background:transparent;color:var(--goma-blue);font-family:'Nunito',sans-serif;-moz-appearance:textfield;outline:none">
+                style="width:100%;font-size:30px;font-weight:800;text-align:center;border:none;background:transparent;color:var(--success);font-family:'Nunito',sans-serif;outline:none">
             </div>
           </div>
 
