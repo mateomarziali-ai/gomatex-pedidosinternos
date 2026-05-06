@@ -1972,18 +1972,33 @@ function openRutaAmpliada(dir){
   }
   body.innerHTML = pending.map(o => `
     <div class="ruta-order-card">
-      <div class="ruta-card-top">
-        <div>
-          <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:700;color:var(--goma-blue)">${o.codigo}</div>
-          <div style="font-size:15px;color:var(--text-mid);margin-top:3px;font-weight:600">${o.descripcion}</div>
+      <!-- Fila 1: código · descripción + badge estado -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden">
+          <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--goma-blue);flex-shrink:0">${o.codigo}</span>
+          <span style="color:var(--text-light);flex-shrink:0">&middot;</span>
+          <span style="font-size:14px;color:var(--text-mid);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descripcion}</span>
         </div>
         ${statusBadge(o.estado)}
       </div>
 
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <span style="font-size:12px;color:var(--text-muted)">${o.fechaPedido} ${o.horaPedido} · por <strong>${o.usuarioCreador}</strong></span>
-        ${o.urgente?'<span class="badge badge-urgente">Urgente</span>':''}
-        ${o.camioneta?'<span class="badge badge-camioneta">Camioneta</span>':''}
+      <!-- Fila 2: cant solicitada (mitad) + badges urgente/stock (mitad) -->
+      <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:10px">
+        <div style="background:var(--goma-blue-pale);border-radius:var(--radius);padding:10px 14px;flex:1;display:flex;flex-direction:column">
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px">Cant. solicitada</div>
+          <div style="font-size:24px;font-weight:800;color:var(--goma-blue);line-height:1.2">${o.cantidadPedida}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex:1">
+          ${o.urgente?'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--warning-bg);border-radius:var(--radius);padding:8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase">Urgente/Vendido</span></div>':''}
+          ${o.camioneta?'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#E8F8F0;border-radius:var(--radius);padding:8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:#0A6B3A;text-transform:uppercase">Stock</span></div>':''}
+          ${!o.urgente&&!o.camioneta?'<div style="flex:1"></div>':''}
+        </div>
+      </div>
+
+      <!-- Fila 3: solicitante + fecha -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:14px">
+        <span style="font-size:12px;color:var(--text-muted)">Solicitó: <strong style="color:var(--text-mid)">${o.usuarioCreador}</strong></span>
+        <span style="font-size:11px;color:var(--text-light)">${o.fechaPedido} ${o.horaPedido}</span>
       </div>
 
       ${canEnviar(o,session)?`
@@ -2042,10 +2057,21 @@ async function confirmarEnvioRuta(id){
   }
 
   if(cant !== String(o.cantidadPedida)){
-    const msg = 'La cantidad enviada es distinta a la solicitada.\nSolicitado: ' + o.cantidadPedida + ' \u2014 Enviado: ' + cant + '\n\n\u00bfDes\u00e9as continuar igual?';
-    if(!confirm(msg)) return;
-    const nota = 'Solicitado: ' + o.cantidadPedida + ' / Enviado: ' + cant;
-    obs = obs ? obs + ' | ' + nota : nota;
+    // Observación obligatoria cuando hay diferencia
+    const obsInput = document.getElementById('ruta-obs-'+id);
+    if(!obs){
+      if(obsInput){
+        obsInput.style.border = '2px solid var(--danger)';
+        obsInput.placeholder = 'Observación obligatoria al enviar cantidad diferente...';
+        obsInput.focus();
+      }
+      showToast('\u26a0\ufe0f La cantidad es distinta a la solicitada. Complet\u00e1 la observaci\u00f3n antes de confirmar.', 'warning', 5000);
+      return;
+    }
+    if(obsInput) obsInput.style.border = '';
+    const diff = (!isNaN(cantNum)&&!isNaN(pedNum)) ? ' (diferencia: '+(cantNum-pedNum)+')' : '';
+    const nota = 'Solicitado: ' + o.cantidadPedida + ' / Enviado: ' + cant + diff;
+    obs = obs + ' | ' + nota;
     showToast('\u26a0\ufe0f Env\u00edo registrado con diferencia', 'warning', 4000);
   }
 
@@ -2110,10 +2136,21 @@ async function confirmEnvio(){
   }
 
   if(cant !== String(o.cantidadPedida)){
-    const msg = 'La cantidad enviada es distinta a la solicitada.\nSolicitado: ' + o.cantidadPedida + ' \u2014 Enviado: ' + cant + '\n\n\u00bfDes\u00e9as continuar igual?';
-    if(!confirm(msg)) return;
-    const nota = 'Cantidad solicitada: ' + o.cantidadPedida + ' / Cantidad enviada: ' + cant;
-    obs = obs ? obs + ' | ' + nota : nota;
+    // Observación obligatoria cuando hay diferencia
+    const obsEl = document.getElementById('env-obs');
+    if(!obs){
+      if(obsEl){
+        obsEl.style.border = '2px solid var(--danger)';
+        obsEl.placeholder = 'Observación obligatoria cuando la cantidad es diferente...';
+        obsEl.focus();
+      }
+      showToast('\u26a0\ufe0f La cantidad es distinta a la solicitada. Complet\u00e1 la observaci\u00f3n antes de confirmar.', 'warning', 5000);
+      return;
+    }
+    if(obsEl) obsEl.style.border = '';
+    const diff = (!isNaN(cantNum)&&!isNaN(pedNum)) ? ' (diferencia: '+(cantNum-pedNum)+')' : '';
+    const nota = 'Cantidad solicitada: ' + o.cantidadPedida + ' / Cantidad enviada: ' + cant + diff;
+    obs = obs + ' | ' + nota;
     showToast('\u26a0\ufe0f Env\u00edo registrado con diferencia', 'warning', 4000);
   }
 
