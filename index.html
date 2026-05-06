@@ -2799,7 +2799,6 @@ function imprimirDia(){
   const tipoFiltro = document.getElementById('h-tipo')?.value || '';
 
   let orders = _cache.orders.filter(function(o){ return o.estado !== 'PENDIENTE'; });
-
   if(session.rol!=='ADMIN' && session.sucursal){
     orders = orders.filter(function(o){ return o.direccion.includes(session.sucursal); });
   }
@@ -2811,75 +2810,59 @@ function imprimirDia(){
   if(tipoFiltro==='recibido') orders = orders.filter(function(o){ return o.estado==='RECIBIDO'||o.estado==='RECIBIDO CON DIFERENCIA'; });
 
   const printEl = document.getElementById('print-area');
-  if(!orders.length){ showToast('No hay pedidos para imprimir con los filtros actuales','warning'); return; }
-
-  var porRuta = {};
-  orders.forEach(function(o){
-    if(!porRuta[o.direccion]) porRuta[o.direccion] = [];
-    porRuta[o.direccion].push(o);
-  });
+  if(!orders.length){ showToast('No hay pedidos para imprimir','warning'); return; }
 
   var fechaLegible = new Date(fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  var tipoLabel = tipoFiltro==='enviado'?'Env\u00edos':tipoFiltro==='recibido'?'Recepciones':'Env\u00edos y Recepciones';
 
-  var html = '<div style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:20px">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:3px solid #0D2096;padding-bottom:12px">';
-  html += '<div><div style="font-size:28px;font-weight:900;color:#0D2096;letter-spacing:-1px">gomatex</div>';
-  html += '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:2px">Sistema de pedidos internos</div></div>';
-  html += '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#0D2096">' + tipoLabel + ' del d\u00eda</div>';
-  html += '<div style="font-size:12px;color:#666">' + fechaLegible + '</div>';
-  html += '<div style="font-size:11px;color:#999">Impreso por: ' + session.username + '</div></div></div>';
+  var html = '<div style="font-family:Arial,sans-serif;padding:16px;font-size:13px">';
 
-  Object.entries(porRuta).forEach(function(entry){
-    var ruta = entry[0];
-    var items = entry[1];
-    html += '<div style="margin-bottom:24px">';
-    html += '<div style="background:#0D2096;color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;font-weight:700;font-size:13px">';
-    html += ruta + ' \u2014 ' + items.length + ' pedido' + (items.length!==1?'s':'') + '</div>';
-    html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    html += '<thead><tr style="background:#e8edff">';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">C\u00f3digo</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Descripci\u00f3n</th>';
-    html += '<th style="padding:7px 8px;text-align:center;border-bottom:1px solid #dde2f2">Sol.</th>';
-    html += '<th style="padding:7px 8px;text-align:center;border-bottom:1px solid #dde2f2">Env.</th>';
-    html += '<th style="padding:7px 8px;text-align:center;border-bottom:1px solid #dde2f2">Rec.</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Estado</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Solicitante</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Preparado por</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Recibido por</th>';
-    html += '<th style="padding:7px 8px;text-align:left;border-bottom:1px solid #dde2f2">Obs.</th>';
-    html += '</tr></thead><tbody>';
-    items.forEach(function(o, i){
-      var obs = o.observacionesRecepcion||o.observacionesEnvio||o.observacionesPedido||'-';
-      var bgRow = i%2===0?'#fff':'#f8f9ff';
-      var esRec = o.estado==='RECIBIDO'||o.estado==='RECIBIDO CON DIFERENCIA';
-      var esEnv = o.estado.startsWith('ENVIADO');
-      var estadoBg = esRec?'#e0f5f0':esEnv?'#e8edff':'#fff4e8';
-      var estadoColor = esRec?'#0a8a6e':esEnv?'#0D2096':'#C95800';
-      html += '<tr style="background:' + bgRow + ';border-bottom:1px solid #eceef8">';
-      html += '<td style="padding:6px 8px;font-weight:700">' + o.codigo + '</td>';
-      html += '<td style="padding:6px 8px">' + o.descripcion + '</td>';
-      html += '<td style="padding:6px 8px;text-align:center">' + o.cantidadPedida + '</td>';
-      html += '<td style="padding:6px 8px;text-align:center;font-weight:700">' + (o.cantidadEnviada!=null?o.cantidadEnviada:'-') + '</td>';
-      html += '<td style="padding:6px 8px;text-align:center;font-weight:700">' + (o.cantidadRecibida!=null?o.cantidadRecibida:'-') + '</td>';
-      html += '<td style="padding:6px 8px"><span style="background:' + estadoBg + ';color:' + estadoColor + ';padding:2px 6px;border-radius:8px;font-size:10px;font-weight:700">' + o.estado + '</span></td>';
-      html += '<td style="padding:6px 8px">' + (o.usuarioCreador||'-') + '</td>';
-      html += '<td style="padding:6px 8px;font-weight:600">' + (o.preparadoPor||'-') + '</td>';
-      html += '<td style="padding:6px 8px;font-weight:600">' + (o.recibidoPor||'-') + '</td>';
-      html += '<td style="padding:6px 8px;color:#666;font-size:11px">' + obs + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table></div>';
+  // Encabezado simple
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #000">';
+  html += '<div><strong style="font-size:18px">GOMATEX</strong> &nbsp; Pedidos internos</div>';
+  html += '<div style="text-align:right;font-size:12px">';
+  html += fechaLegible + '<br>';
+  html += (dirFiltro || 'Todas las rutas') + ' &nbsp;|&nbsp; ' + session.username;
+  html += '</div></div>';
+
+  // Tabla simple
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="border-bottom:2px solid #000">';
+  html += '<th style="text-align:left;padding:4px 6px">Código</th>';
+  html += '<th style="text-align:left;padding:4px 6px">Descripción</th>';
+  html += '<th style="text-align:left;padding:4px 6px">Ruta</th>';
+  html += '<th style="text-align:center;padding:4px 6px">Sol.</th>';
+  html += '<th style="text-align:center;padding:4px 6px">Env.</th>';
+  html += '<th style="text-align:center;padding:4px 6px">Rec.</th>';
+  html += '<th style="text-align:left;padding:4px 6px">Estado</th>';
+  html += '<th style="text-align:left;padding:4px 6px">Preparó</th>';
+  html += '<th style="text-align:left;padding:4px 6px">Obs.</th>';
+  html += '</tr></thead><tbody>';
+
+  orders.forEach(function(o, i){
+    var bg = i%2===0?'':'background:#f5f5f5';
+    var obs = o.observacionesRecepcion||o.observacionesEnvio||o.observacionesPedido||'-';
+    html += '<tr style="border-bottom:1px solid #ddd;' + bg + '">';
+    html += '<td style="padding:5px 6px;font-weight:bold">' + o.codigo + '</td>';
+    html += '<td style="padding:5px 6px">' + o.descripcion + '</td>';
+    html += '<td style="padding:5px 6px">' + o.direccion + '</td>';
+    html += '<td style="padding:5px 6px;text-align:center">' + o.cantidadPedida + '</td>';
+    html += '<td style="padding:5px 6px;text-align:center;font-weight:bold">' + (o.cantidadEnviada!=null?o.cantidadEnviada:'-') + '</td>';
+    html += '<td style="padding:5px 6px;text-align:center;font-weight:bold">' + (o.cantidadRecibida!=null?o.cantidadRecibida:'-') + '</td>';
+    html += '<td style="padding:5px 6px">' + o.estado + '</td>';
+    html += '<td style="padding:5px 6px">' + (o.preparadoPor||'-') + '</td>';
+    html += '<td style="padding:5px 6px;color:#555">' + obs + '</td>';
+    html += '</tr>';
   });
 
-  html += '<div style="margin-top:12px;font-size:11px;color:#999;text-align:right;border-top:1px solid #dde2f2;padding-top:8px">';
-  html += 'Total: ' + orders.length + ' pedido' + (orders.length!==1?'s':'') + ' \u00b7 Generado: ' + new Date().toLocaleTimeString('es-AR');
+  html += '</tbody></table>';
+  html += '<div style="margin-top:10px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:6px">';
+  html += 'Total: ' + orders.length + ' pedido' + (orders.length!==1?'s':'');
   html += '</div></div>';
 
   printEl.innerHTML = html;
-  printEl.style.display='block';
+  printEl.style.display = 'block';
   window.print();
-  printEl.style.display='none';
+  printEl.style.display = 'none';
 }
 
 // Alias para compatibilidad
