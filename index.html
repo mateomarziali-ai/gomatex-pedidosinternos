@@ -2812,52 +2812,49 @@ function imprimirDia(){
   const printEl = document.getElementById('print-area');
   if(!orders.length){ showToast('No hay pedidos para imprimir','warning'); return; }
 
-  var fechaLegible = new Date(fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Fecha y hora formateadas
+  var d = new Date(fecha+'T12:00:00');
+  var fechaFormateada = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  var horaFormateada = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) + ' hs';
+  var rutaLabel = dirFiltro || (session.sucursal === 'Madryn' ? 'Trelew \u2192 Madryn' : 'Madryn \u2192 Trelew');
 
-  var html = '<div style="font-family:Arial,sans-serif;padding:16px;font-size:13px">';
+  var html = '<div style="font-family:Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto">';
 
-  // Encabezado simple
-  html += '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #000">';
-  html += '<div><strong style="font-size:18px">GOMATEX</strong> &nbsp; Pedidos internos</div>';
-  html += '<div style="text-align:right;font-size:12px">';
-  html += fechaLegible + '<br>';
-  html += (dirFiltro || 'Todas las rutas') + ' &nbsp;|&nbsp; ' + session.username;
-  html += '</div></div>';
+  // Encabezado grande
+  html += '<div style="margin-bottom:24px;border-bottom:3px solid #000;padding-bottom:16px">';
+  html += '<div style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">';
+  html += 'LISTADO PARA REALIZAR TRANSFERENCIA &ndash; ' + rutaLabel;
+  html += '</div>';
+  html += '<div style="font-size:16px;font-weight:600;color:#333">' + fechaFormateada + ' &ndash; ' + horaFormateada + '</div>';
+  html += '</div>';
 
-  // Tabla simple
-  html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-  html += '<thead><tr style="border-bottom:2px solid #000">';
-  html += '<th style="text-align:left;padding:4px 6px">Código</th>';
-  html += '<th style="text-align:left;padding:4px 6px">Descripción</th>';
-  html += '<th style="text-align:left;padding:4px 6px">Ruta</th>';
-  html += '<th style="text-align:center;padding:4px 6px">Sol.</th>';
-  html += '<th style="text-align:center;padding:4px 6px">Env.</th>';
-  html += '<th style="text-align:center;padding:4px 6px">Rec.</th>';
-  html += '<th style="text-align:left;padding:4px 6px">Estado</th>';
-  html += '<th style="text-align:left;padding:4px 6px">Preparó</th>';
-  html += '<th style="text-align:left;padding:4px 6px">Obs.</th>';
-  html += '</tr></thead><tbody>';
+  // Tabla simple y grande
+  html += '<table style="width:100%;border-collapse:collapse;font-size:15px">';
+  html += '<thead>';
+  html += '<tr style="border-bottom:2px solid #000;text-align:left">';
+  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px">Código</th>';
+  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px">Descripción</th>';
+  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;text-align:center">Cant. Solicitada</th>';
+  html += '</tr>';
+  html += '</thead><tbody>';
 
   orders.forEach(function(o, i){
-    var bg = i%2===0?'':'background:#f5f5f5';
-    var obs = o.observacionesRecepcion||o.observacionesEnvio||o.observacionesPedido||'-';
-    html += '<tr style="border-bottom:1px solid #ddd;' + bg + '">';
-    html += '<td style="padding:5px 6px;font-weight:bold">' + o.codigo + '</td>';
-    html += '<td style="padding:5px 6px">' + o.descripcion + '</td>';
-    html += '<td style="padding:5px 6px">' + o.direccion + '</td>';
-    html += '<td style="padding:5px 6px;text-align:center">' + o.cantidadPedida + '</td>';
-    html += '<td style="padding:5px 6px;text-align:center;font-weight:bold">' + (o.cantidadEnviada!=null?o.cantidadEnviada:'-') + '</td>';
-    html += '<td style="padding:5px 6px;text-align:center;font-weight:bold">' + (o.cantidadRecibida!=null?o.cantidadRecibida:'-') + '</td>';
-    html += '<td style="padding:5px 6px">' + o.estado + '</td>';
-    html += '<td style="padding:5px 6px">' + (o.preparadoPor||'-') + '</td>';
-    html += '<td style="padding:5px 6px;color:#555">' + obs + '</td>';
+    var bg = i%2===0 ? '' : 'background:#f5f5f5';
+    html += '<tr style="border-bottom:1px solid #ccc;' + bg + '">';
+    html += '<td style="padding:12px 8px;font-weight:700;font-size:15px;letter-spacing:0.5px">' + o.codigo + '</td>';
+    html += '<td style="padding:12px 8px;font-size:15px">' + o.descripcion + '</td>';
+    html += '<td style="padding:12px 8px;font-size:22px;font-weight:900;text-align:center">' + o.cantidadPedida + '</td>';
     html += '</tr>';
   });
 
   html += '</tbody></table>';
-  html += '<div style="margin-top:10px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:6px">';
-  html += 'Total: ' + orders.length + ' pedido' + (orders.length!==1?'s':'');
-  html += '</div></div>';
+
+  // Total al pie
+  html += '<div style="margin-top:20px;font-size:13px;color:#555;border-top:1px solid #ccc;padding-top:10px;display:flex;justify-content:space-between">';
+  html += '<span>Total: <strong>' + orders.length + ' art\u00edculo' + (orders.length!==1?'s':'') + '</strong></span>';
+  html += '<span>Firm\u00f3: ______________________</span>';
+  html += '</div>';
+  html += '</div>';
 
   printEl.innerHTML = html;
   printEl.style.display = 'block';
