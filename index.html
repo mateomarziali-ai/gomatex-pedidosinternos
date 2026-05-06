@@ -1344,14 +1344,15 @@ const DB = {
   setSession(val){ localStorage.setItem('gomatex_session', JSON.stringify(val)) },
 
   async _req(path, opts={}){
+    const headers = {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+    };
+    if(opts.prefer) headers['Prefer'] = opts.prefer;
     const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
       method: opts.method || 'GET',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': opts.prefer || ''
-      },
+      headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
     });
     if (!res.ok) {
@@ -1470,7 +1471,7 @@ const DB = {
       await this._req('gomatex_orders', {
         method: 'POST',
         body: this._orderRow(order),
-        prefer: 'resolution=merge-duplicates'
+        prefer: 'resolution=merge-duplicates,return=minimal'
       });
     } catch(e) {
       console.error('Error guardando pedido:', e);
@@ -1489,7 +1490,7 @@ const DB = {
       await this._req('gomatex_products', {
         method: 'POST',
         body: product,
-        prefer: 'resolution=merge-duplicates'
+        prefer: 'resolution=merge-duplicates,return=minimal'
       });
     } catch(e) { console.error(e); showToast('Error guardando artículo','warning'); }
   },
@@ -1504,13 +1505,17 @@ const DB = {
     try {
       const CHUNK = 500;
       for(let i = 0; i < list.length; i += CHUNK){
+        const chunk = list.slice(i, i + CHUNK);
         await this._req('gomatex_products', {
           method: 'POST',
-          body: list.slice(i, i + CHUNK),
-          prefer: 'resolution=merge-duplicates'
+          body: chunk,
+          prefer: 'resolution=merge-duplicates,return=minimal'
         });
       }
-    } catch(e) { console.error(e); showToast('Error guardando artículos','warning'); }
+    } catch(e) {
+      console.error('saveProducts error:', e);
+      showToast('Error guardando artículos: ' + (e.message||'').slice(0,80), 'warning', 6000);
+    }
   },
 
   // ── Users ──
@@ -1522,7 +1527,7 @@ const DB = {
       await this._req('gomatex_users', {
         method: 'POST',
         body: user,
-        prefer: 'resolution=merge-duplicates'
+        prefer: 'resolution=merge-duplicates,return=minimal'
       });
     } catch(e) { console.error(e); showToast('Error guardando usuario','warning'); }
   },
