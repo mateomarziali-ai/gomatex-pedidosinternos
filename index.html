@@ -2838,21 +2838,23 @@ function imprimirDia(){
   html += '</div>';
 
   // Tabla simple y grande
-  html += '<table style="width:100%;border-collapse:collapse;font-size:15px">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
   html += '<thead>';
-  html += '<tr style="border-bottom:2px solid #000;text-align:left">';
-  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px">Código</th>';
-  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px">Descripción</th>';
-  html += '<th style="padding:10px 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;text-align:center">Cant. Solicitada</th>';
+  html += '<tr style="background:#222;color:#fff;text-align:left">';
+  html += '<th style="padding:8px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:15%">Código</th>';
+  html += '<th style="padding:8px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Descripción</th>';
+  html += '<th style="padding:8px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;text-align:center;width:14%">Cant. Sol.</th>';
+  html += '<th style="padding:8px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;text-align:center;width:14%">Cant. Env.</th>';
   html += '</tr>';
   html += '</thead><tbody>';
 
   orders.forEach(function(o, i){
     var bg = i%2===0 ? '' : 'background:#f5f5f5';
-    html += '<tr style="border-bottom:1px solid #ccc;' + bg + '">';
-    html += '<td style="padding:12px 8px;font-weight:700;font-size:15px;letter-spacing:0.5px">' + o.codigo + '</td>';
-    html += '<td style="padding:12px 8px;font-size:15px">' + o.descripcion + '</td>';
-    html += '<td style="padding:12px 8px;font-size:22px;font-weight:900;text-align:center">' + o.cantidadPedida + '</td>';
+    html += '<tr style="border-bottom:1px solid #ddd;' + bg + '">';
+    html += '<td style="padding:9px 8px;font-weight:700;font-size:13px">' + o.codigo + '</td>';
+    html += '<td style="padding:9px 8px;font-size:13px">' + o.descripcion + '</td>';
+    html += '<td style="padding:9px 8px;font-size:18px;font-weight:900;text-align:center">' + o.cantidadPedida + '</td>';
+    html += '<td style="padding:9px 8px;font-size:18px;font-weight:900;text-align:center;color:#555">' + (o.cantidadEnviada!=null&&o.cantidadEnviada!==''?o.cantidadEnviada:'&nbsp;') + '</td>';
     html += '</tr>';
   });
 
