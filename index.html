@@ -3407,19 +3407,17 @@ function buildUserSelect(id, defaultVal, style){
 }
 
 // ═══════════════════════════════════════════
-//  SIDEBAR — SIMPLE Y CONFIABLE
+//  SIDEBAR — HOVER (desktop) + BURGER (mobile)
 // ═══════════════════════════════════════════
 function toggleSidebar(){
   const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebar-overlay');
-  const isOpen = sidebar.classList.contains('sidebar-open');
-  if(isOpen){
-    sidebar.classList.remove('sidebar-open');
-    overlay.classList.remove('open');
-  } else {
-    sidebar.classList.add('sidebar-open');
-    overlay.classList.add('open');
-  }
+  if(sidebar.classList.contains('sidebar-open')) closeSidebar();
+  else openSidebar();
+}
+
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('sidebar-open');
+  document.getElementById('sidebar-overlay').classList.add('open');
 }
 
 function closeSidebar(){
@@ -3427,29 +3425,54 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-// Overlay click → cerrar
 document.addEventListener('DOMContentLoaded', function(){
-  const overlay = document.getElementById('sidebar-overlay');
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  const burger   = document.querySelector('.topbar-burger');
+  let closeTimer = null;
+
+  // ── Zona trigger invisible de 12px en el borde izquierdo (solo desktop) ──
+  const triggerZone = document.createElement('div');
+  triggerZone.id = 'sidebar-trigger';
+  triggerZone.style.cssText =
+    'position:fixed;left:0;top:0;bottom:0;width:12px;z-index:201;' +
+    'pointer-events:auto;cursor:default;background:transparent;';
+  document.body.appendChild(triggerZone);
+
+  function isMobile(){ return window.innerWidth <= 768; }
+
+  // ── Hover desktop ──
+  triggerZone.addEventListener('mouseenter', function(){
+    if(isMobile()) return;
+    clearTimeout(closeTimer);
+    openSidebar();
+  });
+
+  sidebar.addEventListener('mouseenter', function(){
+    if(isMobile()) return;
+    clearTimeout(closeTimer);
+  });
+
+  sidebar.addEventListener('mouseleave', function(){
+    if(isMobile()) return;
+    closeTimer = setTimeout(closeSidebar, 300);
+  });
+
+  // ── Overlay click → cerrar (mobile y desktop) ──
   if(overlay) overlay.addEventListener('click', closeSidebar);
 
-  // Click en nav-item → cerrar menú
-  const sidebar = document.getElementById('sidebar');
-  if(sidebar){
-    sidebar.addEventListener('click', function(e){
-      if(e.target.closest('.nav-item')){
-        setTimeout(closeSidebar, 300);
-      }
-    });
-  }
-
-  // Click fuera → cerrar
+  // ── Click fuera → cerrar ──
   document.addEventListener('click', function(e){
-    const sidebar = document.getElementById('sidebar');
-    const burger = document.querySelector('.topbar-burger');
-    if(sidebar && sidebar.classList.contains('sidebar-open')){
-      if(!sidebar.contains(e.target) && (!burger || !burger.contains(e.target))){
-        closeSidebar();
-      }
+    if(!sidebar.classList.contains('sidebar-open')) return;
+    if(sidebar.contains(e.target)) return;
+    if(burger && burger.contains(e.target)) return;
+    closeSidebar();
+  });
+
+  // ── Click en nav-item → cerrar ──
+  sidebar.addEventListener('click', function(e){
+    if(e.target.closest('.nav-item')){
+      setTimeout(closeSidebar, 250);
     }
   });
 });
