@@ -1425,21 +1425,37 @@ const DB = {
   // ── Cargar todo desde Supabase ──
   async load(){
     showLoader(true);
-    try {
-      const [users, products, orders] = await Promise.all([
-        this._req('gomatex_users?select=*'),
-        this._req('gomatex_products?select=*'),
-        this._req('gomatex_orders?select=*&order=fechapedido.desc,horapedido.desc')
-      ]);
-      _cache.users = Array.isArray(users) ? users : _cache.users;
-      _cache.products = Array.isArray(products) ? products : _cache.products;
-      if(Array.isArray(orders) && (orders.length > 0 || _cache.orders.length === 0)){
-        _cache.orders = orders.map(o => this._order(o));
+    let attempts = 0;
+    const MAX = 3;
+    while(attempts < MAX){
+      try {
+        const [users, products, orders] = await Promise.all([
+          this._req('gomatex_users?select=*'),
+          this._req('gomatex_products?select=*'),
+          this._req('gomatex_orders?select=*&order=fechapedido.desc,horapedido.desc')
+        ]);
+        _cache.users = Array.isArray(users) ? users : _cache.users;
+        // Protección: solo reemplazar productos si vienen datos válidos
+        if(Array.isArray(products) && products.length > 0){
+          _cache.products = products;
+        }
+        // Protección: solo reemplazar órdenes si vienen datos válidos
+        if(Array.isArray(orders) && orders.length > 0){
+          _cache.orders = orders.map(o => this._order(o));
+        } else if(Array.isArray(orders) && orders.length === 0 && _cache.orders.length === 0){
+          _cache.orders = []; // primera carga, tabla vacía es válido
+        }
+        _prevOrderCount = _cache.orders.length;
+        break; // carga exitosa
+      } catch(e) {
+        attempts++;
+        console.error(`Error cargando datos (intento ${attempts}/${MAX}):`, e);
+        if(attempts < MAX){
+          await new Promise(r => setTimeout(r, 1500 * attempts)); // esperar antes de reintentar
+        } else {
+          showToast('Error de conexión. Recargá la página.','warning',6000);
+        }
       }
-      _prevOrderCount = _cache.orders.length;
-    } catch(e) {
-      console.error('Error cargando datos:', e);
-      showToast('Error de conexión con la base de datos','warning',5000);
     }
     showLoader(false);
   },
