@@ -737,11 +737,11 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
       </div>
       <div class="nav-item" onclick="navigateHistorial('enviado')" data-page="historial" id="nav-hist-envios">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        Historial Envíos
+        Envíos
       </div>
       <div class="nav-item" onclick="navigateHistorial('recibido')" data-page="historial" id="nav-hist-recibidos">
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 14l-5-5h3V7h4v4h3l-5 5zm7 2H5v-2h14v2z"/></svg>
-        Historial Recibidos
+        Recibidos
       </div>
       <div class="nav-item" onclick="navigate('recibir')" data-page="recibir">
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 14l-5-5h3V7h4v4h3l-5 5zm7 2H5v-2h14v2z"/></svg>
@@ -880,7 +880,7 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
       <!-- ═══ HISTORIAL ═══ -->
       <div id="page-historial" class="page">
         <div class="page-header">
-          <h2>Historial de Pedido</h2>
+          <h2 id="historial-title">Historial de Pedido</h2>
           <button class="btn btn-primary" onclick="imprimirDia()">
             <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
             Imprimir del día
@@ -1727,18 +1727,27 @@ document.addEventListener('keydown', e => {
 const PAGE_TITLES = {inicio:'Inicio',historial:'Historial de Pedido',articulos:'Artículos / Excel',usuarios:'Usuarios',recibir:'Recibir Mercadería',metricas:'Métricas y Estadísticas'};
 
 function navigateHistorial(tipo){
+  // Activar página
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById('page-historial');
+  if(pg) pg.classList.add('active');
+
+  // Scroll al tope del contenido
+  const content = document.getElementById('content');
+  if(content) content.scrollTop = 0;
+
   // Marcar activo en sidebar
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navId = tipo === 'enviado' ? 'nav-hist-envios' : 'nav-hist-recibidos';
   const ni = document.getElementById(navId);
   if(ni) ni.classList.add('active');
 
-  // Activar página
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const pg = document.getElementById('page-historial');
-  if(pg) pg.classList.add('active');
-  document.getElementById('topbar-title').textContent =
-    tipo === 'enviado' ? 'Historial de Envíos' : 'Historial de Recibidos';
+  // Títulos
+  const titulo = tipo === 'enviado' ? 'Historial de Envíos' : 'Historial de Recibidos';
+  document.getElementById('topbar-title').textContent = titulo;
+  const h2 = document.getElementById('historial-title');
+  if(h2) h2.textContent = titulo;
+
   closeSidebar();
 
   // Setear filtros según sucursal y tipo
@@ -1751,14 +1760,13 @@ function navigateHistorial(tipo){
   if(hFecha) hFecha.value = today;
   if(hTipo) hTipo.value = tipo;
 
-  // Dirección según sucursal y tipo
   if(hDir){
     if(session.sucursal === 'Madryn'){
       hDir.value = tipo === 'enviado' ? 'Madryn\u2192Trelew' : 'Trelew\u2192Madryn';
     } else if(session.sucursal === 'Trelew'){
       hDir.value = tipo === 'enviado' ? 'Trelew\u2192Madryn' : 'Madryn\u2192Trelew';
     } else {
-      hDir.value = ''; // Admin: todas las rutas
+      hDir.value = '';
     }
   }
   renderHistorial();
@@ -1772,6 +1780,8 @@ function navigate(page){
   const ni = document.querySelector(`.nav-item[data-page="${page}"]`);
   if(ni) ni.classList.add('active');
   document.getElementById('topbar-title').textContent = PAGE_TITLES[page] || page;
+  const content = document.getElementById('content');
+  if(content) content.scrollTop = 0;
   closeSidebar();
   if(page === 'inicio'){ renderInicio(); }
   if(page === 'historial'){
