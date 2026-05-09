@@ -792,52 +792,53 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
             </span>
             <span class="details-arrow" style="font-size:10px;color:var(--text-muted)">▼</span>
           </summary>
-          <div style="background:var(--surface);border:1px solid var(--border-light);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:14px 16px">
+          <div style="background:var(--surface);border:1px solid var(--border-light);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:18px 20px">
             <div id="form-alert"></div>
             <!-- Fila 1: dirección, código, descripción, cantidad -->
-            <div style="display:grid;grid-template-columns:auto 1fr 2fr 1fr;gap:8px;margin-bottom:8px;align-items:end">
+            <div style="display:grid;grid-template-columns:160px 1fr 2fr 140px;gap:12px;margin-bottom:14px;align-items:end">
               <div class="form-group" style="margin:0">
-                <label style="font-size:10px">Dirección *</label>
-                <select id="f-dir" style="padding:7px 10px;font-size:13px">
+                <label>Dirección *</label>
+                <select id="f-dir">
                   <option value="">Seleccionar...</option>
                   <option value="Madryn→Trelew">Madryn → Trelew</option>
                   <option value="Trelew→Madryn">Trelew → Madryn</option>
                 </select>
               </div>
               <div class="form-group autocomplete-wrap" style="margin:0">
-                <label style="font-size:10px">Código *</label>
-                <input type="text" id="f-codigo" placeholder="Buscar código..." autocomplete="off" oninput="acSearch('codigo')" style="padding:7px 10px;font-size:13px">
+                <label>Código *</label>
+                <input type="text" id="f-codigo" placeholder="Buscar código..." autocomplete="off" oninput="acSearch('codigo')">
                 <div class="autocomplete-list" id="ac-codigo"></div>
               </div>
               <div class="form-group autocomplete-wrap" style="margin:0">
-                <label style="font-size:10px">Descripción *</label>
-                <input type="text" id="f-descripcion" placeholder="Buscar descripción..." autocomplete="off" oninput="acSearch('desc')" style="padding:7px 10px;font-size:13px">
+                <label>Descripción *</label>
+                <input type="text" id="f-descripcion" placeholder="Buscar descripción..." autocomplete="off" oninput="acSearch('desc')">
                 <div class="autocomplete-list" id="ac-desc"></div>
               </div>
               <div class="form-group" style="margin:0">
-                <label style="font-size:10px">Cantidad *</label>
-                <input type="text" id="f-cantidad" placeholder="Ej: 2, Un juego..." style="padding:7px 10px;font-size:13px">
+                <label>Cantidad *</label>
+                <input type="text" id="f-cantidad" placeholder="Ej: 2, Un juego...">
               </div>
             </div>
-            <!-- Fila 2: opciones + obs + botones (todo en una línea) -->
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:10px">
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text-mid);cursor:pointer">
-                  <input type="checkbox" id="f-urgente" onchange="validarOpcionesAdicionales()" style="width:14px;height:14px;accent-color:var(--goma-blue)">Urgente/Vendido
+            <!-- Fila 2: opciones + obs + botones -->
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:14px;flex-shrink:0">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text-mid);cursor:pointer">
+                  <input type="checkbox" id="f-urgente" onchange="validarOpcionesAdicionales()" style="width:16px;height:16px;accent-color:var(--goma-blue)">Urgente/Vendido
                 </label>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text-mid);cursor:pointer">
-                  <input type="checkbox" id="f-camioneta" onchange="validarOpcionesAdicionales()" style="width:14px;height:14px;accent-color:var(--goma-blue)">Stock
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text-mid);cursor:pointer">
+                  <input type="checkbox" id="f-camioneta" onchange="validarOpcionesAdicionales()" style="width:16px;height:16px;accent-color:var(--goma-blue)">Stock
                 </label>
-                <span id="opciones-alert" style="display:none;font-size:11px;color:var(--danger);font-weight:600">⚠ Requerido</span>
+                <span id="opciones-alert" style="display:none;font-size:12px;color:var(--danger);font-weight:700">⚠ Requerido</span>
               </div>
-              <input type="text" id="f-obs" placeholder="Observaciones opcionales..." style="flex:1;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:Nunito,sans-serif;font-size:12px">
-              <div style="display:flex;gap:6px;flex-shrink:0">
-                <button class="btn btn-secondary btn-sm" onclick="resetForm()">Limpiar</button>
-                <button class="btn btn-primary btn-sm" onclick="savePedido()">
+              <input type="text" id="f-obs" placeholder="Observaciones opcionales..." style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:Nunito,sans-serif;font-size:13px">
+              <div style="display:flex;gap:8px;flex-shrink:0">
+                <button class="btn btn-secondary" onclick="resetForm()">Limpiar</button>
+                <button class="btn btn-primary" onclick="savePedido()">
                   <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                  Guardar
+                  Guardar pedido
                 </button>
               </div>
+            </div>
             </div>
             <!-- Campos ocultos de fecha/hora/solicitante que siguen funcionando -->
             <input type="hidden" id="f-fecha"><input type="hidden" id="f-hora">
