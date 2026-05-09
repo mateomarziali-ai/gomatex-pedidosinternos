@@ -1935,15 +1935,25 @@ function renderDirBlock(id, dir, orders, session){
       : o.camioneta ? 'Stock' : '';
     var condColor = o.urgente ? 'var(--warning)' : '#0A6B3A';
     var condBg = o.urgente ? 'var(--warning-bg)' : '#E8F8F0';
-    var btnEnviar = canEnviar(o,session)
-      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\'' + o.id + '\')" style="padding:5px 12px">Enviar</button>'
-      : '';
     var onCardClick = canEnviar(o,session)
       ? "openEnviar(\'" + o.id + "\')"
       : "showDetalle(\'" + o.id + "\')";
+
+    var sendSection = canEnviar(o,session)
+      ? '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">' +
+          '<div style="display:flex;flex-direction:column;align-items:center">' +
+            '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Env.</span>' +
+            '<input type="text" id="inline-qty-' + o.id + '" placeholder="—"' +
+              ' style="width:54px;font-size:16px;font-weight:800;text-align:center;border:1.5px solid var(--border);border-radius:6px;padding:2px 4px;color:var(--goma-blue);background:#fff;font-family:Nunito,sans-serif"' +
+              ' onclick="event.stopPropagation()">' +
+          '</div>' +
+          '<button class="btn btn-xs btn-primary" style="padding:5px 12px;align-self:flex-end" onclick="enviarDesdeCard(\'' + o.id + '\')">Enviar</button>' +
+        '</div>'
+      : '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + statusBadge(o.estado) + '</span>';
+
     return '<div class="order-card-mini" onclick="' + onCardClick + '" style="cursor:pointer;padding:10px 14px;margin-bottom:8px">' +
 
-      // Renglón 1: código · descripción · cant. solicitada · botones
+      // Renglón 1: código · descripción · cant. solicitada · input env. · botón enviar
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
         '<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:var(--goma-blue);flex-shrink:0">' + o.codigo + '</span>' +
         '<span style="color:var(--text-light);flex-shrink:0">&middot;</span>' +
@@ -1952,10 +1962,7 @@ function renderDirBlock(id, dir, orders, session){
           '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Sol.</span>' +
           '<span style="font-size:17px;font-weight:800;color:var(--goma-blue);line-height:1.1">' + o.cantidadPedida + '</span>' +
         '</div>' +
-        '<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0">' +
-          '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\'' + o.id + '\')" style="padding:5px 10px">Ver</button>' +
-          btnEnviar +
-        '</div>' +
+        sendSection +
       '</div>' +
 
       // Renglón 2: condición + quién solicitó
@@ -1967,6 +1974,46 @@ function renderDirBlock(id, dir, orders, session){
     '</div>';
   }).join('');
 }
+async function enviarDesdeCard(id){
+  const o = _cache.orders.find(x => x.id===id);
+  if(!o) return;
+  const input = document.getElementById('inline-qty-'+id);
+  const cant = (input?.value||'').trim();
+  if(!cant){ input.style.border='2px solid var(--danger)'; input.focus(); return; }
+  input.style.border='';
+
+  const session = currentSession();
+  const preparador = session.username || '';
+  const cantNum = parseFloat(cant);
+  const pedNum = parseFloat(o.cantidadPedida);
+  let estado;
+  if(!isNaN(cantNum)&&!isNaN(pedNum)){
+    if(cantNum===pedNum) estado='ENVIADO';
+    else if(cantNum<pedNum) estado='ENVIADO CON FALTANTE';
+    else estado='ENVIADO CON EXCEDENTE';
+  } else {
+    estado = (cant===String(o.cantidadPedida))?'ENVIADO':'ENVIADO CON FALTANTE';
+  }
+
+  let obs = '';
+  if(cant!==String(o.cantidadPedida)){
+    const diff = (!isNaN(cantNum)&&!isNaN(pedNum))?' (diferencia: '+(cantNum-pedNum)+')':'';
+    obs = 'Solicitado: '+o.cantidadPedida+' / Enviado: '+cant+diff;
+  }
+
+  const now = new Date();
+  const updated = {...o,
+    cantidadEnviada:cant, estado,
+    observacionesEnvio:obs, preparadoPor:preparador,
+    fechaEnvio:now.toISOString().split('T')[0],
+    horaEnvio:now.toTimeString().slice(0,5),
+    usuarioEnvio:session.username
+  };
+  await DB.saveOrder(updated);
+  renderInicio();
+  showToast('\u2713 Env\u00edo registrado \u2014 <span onclick="navigate(\'historial\')" style="text-decoration:underline;cursor:pointer;font-weight:700">Ver en Historial</span>','success',5000);
+}
+
 function canEnviar(o,session){
   if(o.estado!=='PENDIENTE') return false;
   if(session.rol==='ADMIN') return true;
