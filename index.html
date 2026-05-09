@@ -2023,25 +2023,29 @@ function openRutaAmpliada(dir){
       </div>
 
       ${canEnviar(o,session)?`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-        <div style="background:var(--goma-blue);border-radius:var(--radius-lg);padding:16px;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cant. Solicitada</div>
-          <div style="font-size:40px;font-weight:800;color:#fff;line-height:1">${o.cantidadPedida}</div>
+      <!-- 3 columnas iguales: Solicitada | A enviar | Preparado por -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;align-items:stretch">
+        <!-- Cant. Solicitada -->
+        <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Solicitada</div>
+          <div style="font-size:36px;font-weight:800;color:var(--goma-blue);line-height:1">${o.cantidadPedida}</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.7px">Cant. a Enviar *</div>
-          <input type="text" inputmode="text" id="ruta-qty-${o.id}" placeholder="Ej: 1, 1.5, un juego..."
-            style="width:100%;padding:12px;font-size:36px;font-weight:800;text-align:center;border:2.5px solid var(--border);border-radius:var(--radius-lg);font-family:'Nunito',sans-serif;color:var(--primary);background:#fff;-moz-appearance:textfield">
+        <!-- Cant. a Enviar -->
+        <div style="background:#fff;border:2.5px solid var(--goma-blue);border-radius:var(--radius-lg);padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">A Enviar *</div>
+          <input type="text" inputmode="text" id="ruta-qty-${o.id}" placeholder="0"
+            style="width:100%;font-size:34px;font-weight:800;text-align:center;border:none;background:transparent;color:var(--goma-blue);font-family:'Nunito',sans-serif;outline:none">
         </div>
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px">Preparado por</label>
-        <input type="text" id="ruta-prep-sel-${o.id}" readonly value="${currentSession().username||''}"
-          style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.2);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:15px;background:rgba(255,255,255,0.1);color:#fff;cursor:default">
-        <input type="hidden" id="ruta-prep-${o.id}" value="${currentSession().username||''}">
+        <!-- Preparado por -->
+        <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Preparó</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-mid)">${currentSession().username||''}</div>
+          <input type="hidden" id="ruta-prep-sel-${o.id}" value="${currentSession().username||''}">
+          <input type="hidden" id="ruta-prep-${o.id}" value="${currentSession().username||''}">
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:12px">
-        <label style="font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.5px">Observaciones (opcional)</label>
+        <label style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.5px">Observaciones (opcional)</label>
         <input type="text" id="ruta-obs-${o.id}" placeholder="Notas del envío..."
           style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Nunito',sans-serif;font-size:14px;background:var(--surface2)">
       </div>
@@ -2353,22 +2357,22 @@ function renderRecibir(){
       return `
       <div class="card" style="margin-bottom:16px;overflow:visible">
         <!-- Header de la card -->
-        <div style="padding:16px 18px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-          <!-- Fila 1: código + descripción a lo largo -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-            <span style="font-family:'DM Mono',monospace;font-size:17px;font-weight:700;color:#fff;flex-shrink:0">${o.codigo}</span>
-            <span style="font-size:15px;color:rgba(255,255,255,0.88);font-weight:600;flex:1">${o.descripcion}</span>
-          </div>
-          <!-- Fila 2: badges grandes + enviado por -->
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;gap:8px">
-              ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.4);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">⚡ Urgente / Vendido</span>':''}
-              ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.4);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">📦 Stock</span>':''}
-            </div>
+        <div style="padding:18px 20px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+          <!-- Enviado por (pequeño, arriba a la derecha) -->
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
             <div style="text-align:right">
-              <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
               <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
             </div>
+          </div>
+          <!-- Código grande -->
+          <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:0.5px;margin-bottom:4px">${o.codigo}</div>
+          <!-- Descripción grande -->
+          <div style="font-size:18px;color:rgba(255,255,255,0.9);font-weight:600;margin-bottom:12px;line-height:1.3">${o.descripcion}</div>
+          <!-- Badges al final -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:5px 16px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">⚡ Urgente / Vendido</span>':''}
+            ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:5px 16px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">📦 Stock</span>':''}
           </div>
         </div>
 
