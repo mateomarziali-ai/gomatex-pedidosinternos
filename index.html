@@ -1487,7 +1487,7 @@ const DB = {
     if (idx > -1) _cache.products[idx] = product;
     else _cache.products.push(product);
     try {
-      await this._req('gomatex_products', {
+      await this._req('gomatex_products?on_conflict=codigo', {
         method: 'POST',
         body: product,
         prefer: 'resolution=merge-duplicates,return=minimal'
@@ -1506,7 +1506,7 @@ const DB = {
       const CHUNK = 500;
       for(let i = 0; i < list.length; i += CHUNK){
         const chunk = list.slice(i, i + CHUNK);
-        await this._req('gomatex_products', {
+        await this._req('gomatex_products?on_conflict=codigo', {
           method: 'POST',
           body: chunk,
           prefer: 'resolution=merge-duplicates,return=minimal'
