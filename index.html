@@ -735,9 +735,13 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
         <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         Inicio
       </div>
-      <div class="nav-item" onclick="navigate('historial')" data-page="historial">
-        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-        Historial
+      <div class="nav-item" onclick="navigateHistorial('enviado')" data-page="historial" id="nav-hist-envios">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        Historial Envíos
+      </div>
+      <div class="nav-item" onclick="navigateHistorial('recibido')" data-page="historial" id="nav-hist-recibidos">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 14l-5-5h3V7h4v4h3l-5 5zm7 2H5v-2h14v2z"/></svg>
+        Historial Recibidos
       </div>
       <div class="nav-item" onclick="navigate('recibir')" data-page="recibir">
         <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 14l-5-5h3V7h4v4h3l-5 5zm7 2H5v-2h14v2z"/></svg>
@@ -1720,6 +1724,44 @@ document.addEventListener('keydown', e => {
 //  NAVIGATION
 // ═══════════════════════════════════════════
 const PAGE_TITLES = {inicio:'Inicio',historial:'Historial de Pedidos',articulos:'Artículos / Excel',usuarios:'Usuarios',recibir:'Recibir Mercadería',metricas:'Métricas y Estadísticas'};
+
+function navigateHistorial(tipo){
+  // Marcar activo en sidebar
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navId = tipo === 'enviado' ? 'nav-hist-envios' : 'nav-hist-recibidos';
+  const ni = document.getElementById(navId);
+  if(ni) ni.classList.add('active');
+
+  // Activar página
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById('page-historial');
+  if(pg) pg.classList.add('active');
+  document.getElementById('topbar-title').textContent =
+    tipo === 'enviado' ? 'Historial de Envíos' : 'Historial de Recibidos';
+  closeSidebar();
+
+  // Setear filtros según sucursal y tipo
+  const session = currentSession();
+  const today = new Date().toISOString().split('T')[0];
+  const hFecha = document.getElementById('h-fecha');
+  const hDir = document.getElementById('h-dir');
+  const hTipo = document.getElementById('h-tipo');
+
+  if(hFecha) hFecha.value = today;
+  if(hTipo) hTipo.value = tipo;
+
+  // Dirección según sucursal y tipo
+  if(hDir){
+    if(session.sucursal === 'Madryn'){
+      hDir.value = tipo === 'enviado' ? 'Madryn\u2192Trelew' : 'Trelew\u2192Madryn';
+    } else if(session.sucursal === 'Trelew'){
+      hDir.value = tipo === 'enviado' ? 'Trelew\u2192Madryn' : 'Madryn\u2192Trelew';
+    } else {
+      hDir.value = ''; // Admin: todas las rutas
+    }
+  }
+  renderHistorial();
+}
 
 function navigate(page){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
