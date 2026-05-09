@@ -1942,25 +1942,28 @@ function renderDirBlock(id, dir, orders, session){
       ? "openEnviar(\'" + o.id + "\')"
       : "showDetalle(\'" + o.id + "\')";
     return '<div class="order-card-mini" onclick="' + onCardClick + '" style="cursor:pointer;padding:10px 14px;margin-bottom:8px">' +
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+
+      // Renglón 1: código · descripción · cant. solicitada · botones
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
         '<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:var(--goma-blue);flex-shrink:0">' + o.codigo + '</span>' +
         '<span style="color:var(--text-light);flex-shrink:0">&middot;</span>' +
-        '<span style="font-size:13px;color:var(--text-mid);font-weight:500;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
+        '<span style="font-size:13px;color:var(--text-mid);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
         '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' +
-          '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Sol.</span>' +
-          '<span style="font-size:16px;font-weight:800;color:var(--goma-blue);line-height:1.2">' + o.cantidadPedida + '</span>' +
+          '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Sol.</span>' +
+          '<span style="font-size:17px;font-weight:800;color:var(--goma-blue);line-height:1.1">' + o.cantidadPedida + '</span>' +
         '</div>' +
-        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' +
-          '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Env.</span>' +
-          '<span style="font-size:16px;font-weight:800;color:var(--info);line-height:1.2">' + (o.cantidadEnviada!=null?o.cantidadEnviada:'\u2014') + '</span>' +
-        '</div>' +
-        (condicion ? '<span style="background:'+condBg+';color:'+condColor+';padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0">'+condicion+'</span>' : '') +
-        '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;white-space:nowrap">' + o.usuarioCreador + ' ' + o.horaPedido + '</span>' +
         '<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0">' +
           '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\'' + o.id + '\')" style="padding:5px 10px">Ver</button>' +
           btnEnviar +
         '</div>' +
       '</div>' +
+
+      // Renglón 2: condición + quién solicitó
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        (condicion ? '<span style="background:'+condBg+';color:'+condColor+';padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase">'+condicion+'</span>' : '') +
+        '<span style="font-size:11px;color:var(--text-muted)">Solicit\u00f3: <strong style="color:var(--text-mid)">' + o.usuarioCreador + '</strong> &middot; ' + o.horaPedido + '</span>' +
+      '</div>' +
+
     '</div>';
   }).join('');
 }
