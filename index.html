@@ -1930,48 +1930,36 @@ function renderDirBlock(id, dir, orders, session){
     return;
   }
   listEl.innerHTML = orders.map(function(o){
-    var badgeUrgente = o.urgente
-      ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--warning-bg);border-radius:var(--radius);padding:10px 8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.3px">Urgente / Vendido</span></div>'
-      : '';
-    var badgeStock = o.camioneta
-      ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#E8F8F0;border-radius:var(--radius);padding:10px 8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:#0A6B3A;text-transform:uppercase;letter-spacing:0.3px">Stock</span></div>'
-      : '';
-    var badgesRight = (badgeUrgente || badgeStock)
-      ? '<div style="display:flex;gap:6px;flex:1;min-width:80px">' + badgeUrgente + badgeStock + '</div>'
-      : '<div style="flex:1"></div>';
+    var condicion = o.urgente && o.camioneta ? 'Urgente / Stock'
+      : o.urgente ? 'Urgente / Vendido'
+      : o.camioneta ? 'Stock' : '';
+    var condColor = o.urgente ? 'var(--warning)' : '#0A6B3A';
+    var condBg = o.urgente ? 'var(--warning-bg)' : '#E8F8F0';
     var btnEnviar = canEnviar(o,session)
-      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\'' + o.id + '\')">Enviar</button>'
+      ? '<button class="btn btn-xs btn-primary" onclick="openEnviar(\'' + o.id + '\')" style="padding:5px 12px">Enviar</button>'
       : '';
     var onCardClick = canEnviar(o,session)
       ? "openEnviar(\'" + o.id + "\')"
       : "showDetalle(\'" + o.id + "\')";
-    return '<div class="order-card-mini" onclick="' + onCardClick + '" style="cursor:pointer">' +
-      // Fila 1: código · descripción en mismo renglón + badge estado
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden">' +
-          '<span class="ocm-code" style="flex-shrink:0">' + o.codigo + '</span>' +
-          '<span style="color:var(--text-light);flex-shrink:0;font-size:14px">&middot;</span>' +
-          '<span class="ocm-desc" style="margin-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
-        '</div>' + statusBadge(o.estado) +
-      '</div>' +
-      // Fila 2: cant solicitada (mitad izq) | badges stock/urgente (mitad der)
-      '<div style="display:flex;gap:10px;align-items:stretch;margin-bottom:10px">' +
-        '<div class="ocm-qty-row" style="flex:1;margin-bottom:0">' +
-          '<div>' +
-            '<div class="ocm-qty-label">Cant. solicitada</div>' +
-            '<div class="ocm-qty-value">' + o.cantidadPedida + '</div>' +
-          '</div>' +
-        '</div>' + badgesRight +
-      '</div>' +
-      // Fila 3: quién solicita + fecha y hora
-      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
-        '<span style="font-size:12px;color:var(--text-muted)">Solicit\u00f3: <strong style="color:var(--text-mid)">' + o.usuarioCreador + '</strong></span>' +
-        '<span style="font-size:11px;color:var(--text-light)">' + o.fechaPedido + ' ' + o.horaPedido + '</span>' +
-      '</div>' +
-      // Acciones
-      '<div class="ocm-actions" onclick="event.stopPropagation()">' +
-        '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\'' + o.id + '\')">Ver detalle</button>' +
-        btnEnviar +
+    return '<div class="order-card-mini" onclick="' + onCardClick + '" style="cursor:pointer;padding:10px 14px;margin-bottom:8px">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:var(--goma-blue);flex-shrink:0">' + o.codigo + '</span>' +
+        '<span style="color:var(--text-light);flex-shrink:0">&middot;</span>' +
+        '<span style="font-size:13px;color:var(--text-mid);font-weight:500;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
+        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' +
+          '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Sol.</span>' +
+          '<span style="font-size:16px;font-weight:800;color:var(--goma-blue);line-height:1.2">' + o.cantidadPedida + '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' +
+          '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Env.</span>' +
+          '<span style="font-size:16px;font-weight:800;color:var(--info);line-height:1.2">' + (o.cantidadEnviada!=null?o.cantidadEnviada:'\u2014') + '</span>' +
+        '</div>' +
+        (condicion ? '<span style="background:'+condBg+';color:'+condColor+';padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0">'+condicion+'</span>' : '') +
+        '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;white-space:nowrap">' + o.usuarioCreador + ' ' + o.horaPedido + '</span>' +
+        '<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0">' +
+          '<button class="btn btn-xs btn-secondary" onclick="showDetalle(\'' + o.id + '\')" style="padding:5px 10px">Ver</button>' +
+          btnEnviar +
+        '</div>' +
       '</div>' +
     '</div>';
   }).join('');
