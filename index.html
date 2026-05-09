@@ -1350,6 +1350,11 @@ const DB = {
       'Content-Type': 'application/json',
     };
     if(opts.prefer) headers['Prefer'] = opts.prefer;
+    // Soporte de paginación con Range header
+    if(opts.rangeFrom !== undefined){
+      headers['Range'] = `${opts.rangeFrom}-${opts.rangeTo}`;
+      headers['Range-Unit'] = 'items';
+    }
     const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
       method: opts.method || 'GET',
       headers,
@@ -1430,21 +1435,33 @@ const DB = {
     const MAX = 3;
     while(attempts < MAX){
       try {
-        const [users, products, orders] = await Promise.all([
+        // Cargar usuarios y órdenes normalmente
+        const [users, orders] = await Promise.all([
           this._req('gomatex_users?select=*'),
-          this._req('gomatex_products?select=*'),
           this._req('gomatex_orders?select=*&order=fechapedido.desc,horapedido.desc')
         ]);
-        _cache.users = Array.isArray(users) ? users : _cache.users;
-        // Protección: solo reemplazar productos si vienen datos válidos
-        if(Array.isArray(products) && products.length > 0){
-          _cache.products = products;
+
+        // Cargar productos en batches de 1000 (Supabase tiene límite de 1000/request)
+        const PAGE = 1000;
+        let allProducts = [];
+        let from = 0;
+        while(true){
+          const batch = await this._req(
+            'gomatex_products?select=*&order=codigo.asc',
+            { rangeFrom: from, rangeTo: from + PAGE - 1 }
+          );
+          if(!Array.isArray(batch) || batch.length === 0) break;
+          allProducts = allProducts.concat(batch);
+          if(batch.length < PAGE) break; // última página, no hay más
+          from += PAGE;
         }
-        // Protección: solo reemplazar órdenes si vienen datos válidos
+
+        _cache.users = Array.isArray(users) ? users : _cache.users;
+        if(allProducts.length > 0) _cache.products = allProducts;
         if(Array.isArray(orders) && orders.length > 0){
           _cache.orders = orders.map(o => this._order(o));
         } else if(Array.isArray(orders) && orders.length === 0 && _cache.orders.length === 0){
-          _cache.orders = []; // primera carga, tabla vacía es válido
+          _cache.orders = [];
         }
         _prevOrderCount = _cache.orders.length;
         break; // carga exitosa
@@ -1452,7 +1469,7 @@ const DB = {
         attempts++;
         console.error(`Error cargando datos (intento ${attempts}/${MAX}):`, e);
         if(attempts < MAX){
-          await new Promise(r => setTimeout(r, 1500 * attempts)); // esperar antes de reintentar
+          await new Promise(r => setTimeout(r, 1500 * attempts));
         } else {
           showToast('Error de conexión. Recargá la página.','warning',6000);
         }
@@ -2357,22 +2374,19 @@ function renderRecibir(){
       return `
       <div class="card" style="margin-bottom:16px;overflow:visible">
         <!-- Header de la card -->
-        <div style="padding:18px 20px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-          <!-- Enviado por (pequeño, arriba a la derecha) -->
-          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <div style="text-align:right">
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
-              <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
-            </div>
+        <div style="padding:18px 20px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <!-- Izquierda: código · descripción · badge (mismo renglón) -->
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;flex-wrap:wrap">
+            <span style="font-size:22px;font-weight:800;color:#fff;white-space:nowrap">${o.codigo}</span>
+            <span style="color:rgba(255,255,255,0.4);font-size:18px">·</span>
+            <span style="font-size:17px;color:rgba(255,255,255,0.92);font-weight:600;flex:1">${o.descripcion}</span>
+            ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:4px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;white-space:nowrap">⚡ Urgente / Vendido</span>':''}
+            ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:4px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;white-space:nowrap">📦 Stock</span>':''}
           </div>
-          <!-- Código grande -->
-          <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:0.5px;margin-bottom:4px">${o.codigo}</div>
-          <!-- Descripción grande -->
-          <div style="font-size:18px;color:rgba(255,255,255,0.9);font-weight:600;margin-bottom:12px;line-height:1.3">${o.descripcion}</div>
-          <!-- Badges al final -->
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:5px 16px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">⚡ Urgente / Vendido</span>':''}
-            ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:5px 16px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px">📦 Stock</span>':''}
+          <!-- Derecha: enviado por -->
+          <div style="text-align:right;white-space:nowrap;flex-shrink:0">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">Enviado por</div>
+            <div style="font-size:13px;color:#fff;font-weight:600">${o.preparadoPor||o.usuarioEnvio} — ${o.horaEnvio} hs</div>
           </div>
         </div>
 
