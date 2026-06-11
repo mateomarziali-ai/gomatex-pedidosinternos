@@ -1319,6 +1319,8 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Supabase JS (solo para realtime: avisos instantáneos sin gastar cuota) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 // ═══════════════════════════════════════════
@@ -1330,6 +1332,22 @@ const SUPA_KEY = 'sb_publishable_9ZGSglt6Mj_g0ubGo4jr_A_Obi1lT8_';
 // ═══════════════════════════════════════════
 //  CACHE LOCAL (todos los renders leen de acá)
 // ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  VENTANA DE DATOS
+//  Trae TODOS los abiertos + los cerrados de los últimos 60 días.
+//  Lo más viejo queda guardado en Supabase (lo cubre el email semanal
+//  automático). Sin esto, con un año de pedidos acumulados cada
+//  refresco bajaría la tabla entera y se agota la cuota gratuita.
+// ═══════════════════════════════════════════
+const ESTADOS_ABIERTOS = ['PENDIENTE','ENVIADO','ENVIADO CON FALTANTE','ENVIADO CON EXCEDENTE'];
+function ordersQuery(){
+  const corte = new Date(Date.now() - 60*864e5).toISOString().slice(0,10);
+  const abiertos = 'estado.in.(' + ESTADOS_ABIERTOS.map(e => '"'+e+'"').join(',') + ')';
+  const filtro = encodeURIComponent('(' + abiertos + ',fechapedido.gte.' + corte + ')');
+  return 'gomatex_orders?select=*&or=' + filtro + '&order=fechapedido.desc,horapedido.desc&limit=4000';
+}
+
 const _cache = { users: [], products: [], orders: [] };
 
 // ═══════════════════════════════════════════
@@ -1437,7 +1455,7 @@ const DB = {
         // Cargar usuarios y órdenes normalmente
         const [users, orders] = await Promise.all([
           this._req('gomatex_users?select=*'),
-          this._req('gomatex_orders?select=*&order=fechapedido.desc,horapedido.desc')
+          this._req(ordersQuery())
         ]);
 
         // Cargar productos en batches de 1000 (Supabase tiene límite de 1000/request)
@@ -1600,7 +1618,7 @@ function poblarLoginSelect(){
   });
   sel.innerHTML = '<option value="">Seleccioná tu usuario...</option>' +
     sorted.map(u =>
-      `<option value="${u.username}">${u.username.charAt(0).toUpperCase()+u.username.slice(1)}${u.sucursal?' ('+u.sucursal+')':''}</option>`
+      `<option value="${escHtml(u.username)}">${u.username.charAt(0).toUpperCase()+u.username.slice(1)}${u.sucursal?' ('+u.sucursal+')':''}</option>`
     ).join('');
 }
 
@@ -1693,7 +1711,7 @@ function showApp(session){
   document.getElementById('app').style.display = 'flex';
   document.getElementById('sb-avatar').textContent = session.username[0].toUpperCase();
   document.getElementById('sb-name').textContent = session.username;
-  document.getElementById('sb-role').textContent = session.sucursal ? `${session.rol} · ${session.sucursal}` : session.rol;
+  document.getElementById('sb-role').textContent = session.sucursal ? `${session.rol} · ${escHtml(session.sucursal)}` : session.rol;
   document.getElementById('tb-sucursal').textContent = session.sucursal || 'ADMIN';
   if(session.rol === 'ADMIN'){
     document.getElementById('nav-usuarios').style.display = 'flex';
@@ -1844,13 +1862,20 @@ function acSearch(type){
     p.codigo.toLowerCase().includes(query) || p.descripcion.toLowerCase().includes(query)
   ).slice(0,10);
   if(!filtered.length){ list.classList.remove('open'); return; }
+  _acFiltered = filtered;   // selección por índice: inmune a comillas en las descripciones (1" 1/4, etc.)
   list.innerHTML = filtered.map((p,i) => `
-    <div class="autocomplete-item" onclick="acSelect('${escHtml(p.codigo)}','${escHtml(p.descripcion)}')" data-idx="${i}">
-      <div class="ac-code">${p.codigo}</div>
-      <div class="ac-desc">${p.descripcion}</div>
+    <div class="autocomplete-item" onclick="acSelectIdx(${i})" data-idx="${i}">
+      <div class="ac-code">${escHtml(p.codigo)}</div>
+      <div class="ac-desc">${escHtml(p.descripcion)}</div>
     </div>
   `).join('');
   list.classList.add('open');
+}
+
+let _acFiltered = [];
+function acSelectIdx(i){
+  const p = _acFiltered[i];
+  if(p) acSelect(p.codigo, p.descripcion);
 }
 
 function acSelect(code, desc){
@@ -1860,7 +1885,11 @@ function acSelect(code, desc){
   document.getElementById('ac-desc').classList.remove('open');
 }
 
-function escHtml(s){ return (s||'').replace(/'/g,"&#39;").replace(/"/g,"&quot;"); }
+function escHtml(s){
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 // ═══════════════════════════════════════════
 //  PEDIDOS - FORM
@@ -1954,6 +1983,7 @@ async function savePedido(){
   };
   await DB.saveOrder(order);
   _prevOrderCount = _cache.orders.length; // evitar que autoRefresh alerte el pedido propio
+  if(window._idsVistos) window._idsVistos.add(order.id);
   showToast('\u2713 Pedido creado correctamente','success');
   resetForm();
   renderInicio();
@@ -2115,9 +2145,9 @@ function openRutaAmpliada(dir){
       <!-- Fila 1: código · descripción + badge estado -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden">
-          <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--goma-blue);flex-shrink:0">${o.codigo}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--goma-blue);flex-shrink:0">${escHtml(o.codigo)}</span>
           <span style="color:var(--text-light);flex-shrink:0">&middot;</span>
-          <span style="font-size:14px;color:var(--text-mid);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descripcion}</span>
+          <span style="font-size:14px;color:var(--text-mid);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(o.descripcion)}</span>
         </div>
         ${statusBadge(o.estado)}
       </div>
@@ -2126,7 +2156,7 @@ function openRutaAmpliada(dir){
       <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:10px">
         <div style="background:var(--goma-blue-pale);border-radius:var(--radius);padding:10px 14px;flex:1;display:flex;flex-direction:column">
           <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px">Cant. solicitada</div>
-          <div style="font-size:24px;font-weight:800;color:var(--goma-blue);line-height:1.2">${o.cantidadPedida}</div>
+          <div style="font-size:24px;font-weight:800;color:var(--goma-blue);line-height:1.2">${escHtml(o.cantidadPedida)}</div>
         </div>
         <div style="display:flex;gap:6px;flex:1">
           ${o.urgente?'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--warning-bg);border-radius:var(--radius);padding:8px;flex:1;text-align:center"><span style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase">Urgente/Vendido</span></div>':''}
@@ -2137,7 +2167,7 @@ function openRutaAmpliada(dir){
 
       <!-- Fila 3: solicitante + fecha -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:14px">
-        <span style="font-size:12px;color:var(--text-muted)">Solicitó: <strong style="color:var(--text-mid)">${o.usuarioCreador}</strong></span>
+        <span style="font-size:12px;color:var(--text-muted)">Solicitó: <strong style="color:var(--text-mid)">${escHtml(o.usuarioCreador)}</strong></span>
         <span style="font-size:11px;color:var(--text-light)">${o.fechaPedido} ${o.horaPedido}</span>
       </div>
 
@@ -2147,7 +2177,7 @@ function openRutaAmpliada(dir){
         <!-- Cant. Solicitada -->
         <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
           <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Solicitada</div>
-          <div style="font-size:36px;font-weight:800;color:var(--goma-blue);line-height:1">${o.cantidadPedida}</div>
+          <div style="font-size:36px;font-weight:800;color:var(--goma-blue);line-height:1">${escHtml(o.cantidadPedida)}</div>
         </div>
         <!-- Cant. a Enviar -->
         <div style="background:#fff;border:2.5px solid var(--goma-blue);border-radius:var(--radius-lg);padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
@@ -2322,7 +2352,7 @@ function openRecibir(id){
   if(!o) return;
   document.getElementById('rec-cantidad').value = '';
   document.getElementById('rec-obs').value = '';
-  document.getElementById('rec-hint').textContent = `Cantidad enviada: ${o.cantidadEnviada}.`;
+  document.getElementById('rec-hint').textContent = `Cantidad enviada: ${escHtml(o.cantidadEnviada)}.`;
   document.getElementById('rec-order-info').innerHTML = orderInfoBlock(o);
   openModal('modal-recibir');
 }
@@ -2355,14 +2385,14 @@ async function confirmRecepcion(){
 // ═══════════════════════════════════════════
 function orderInfoBlock(o){
   return `<div class="info-grid">
-    <div class="info-item"><label>C\u00f3digo</label><span>${o.codigo}</span></div>
-    <div class="info-item"><label>Descripci\u00f3n</label><span>${o.descripcion}</span></div>
+    <div class="info-item"><label>C\u00f3digo</label><span>${escHtml(o.codigo)}</span></div>
+    <div class="info-item"><label>Descripci\u00f3n</label><span>${escHtml(o.descripcion)}</span></div>
     <div class="info-item"><label>Direcci\u00f3n</label><span>${o.direccion}</span></div>
     <div class="info-item"><label>Estado</label><span>${statusBadge(o.estado)}</span></div>
-    <div class="info-item"><label>Cantidad Pedida</label><span>${o.cantidadPedida}</span></div>
-    ${o.cantidadEnviada!==null?`<div class="info-item"><label>Cantidad Enviada</label><span>${o.cantidadEnviada}</span></div>`:''}
-    ${o.cantidadRecibida!==null?`<div class="info-item"><label>Cantidad Recibida</label><span>${o.cantidadRecibida}</span></div>`:''}
-    <div class="info-item"><label>Creado</label><span>${o.fechaPedido} ${o.horaPedido} por ${o.usuarioCreador}</span></div>
+    <div class="info-item"><label>Cantidad Pedida</label><span>${escHtml(o.cantidadPedida)}</span></div>
+    ${o.cantidadEnviada!==null?`<div class="info-item"><label>Cantidad Enviada</label><span>${escHtml(o.cantidadEnviada)}</span></div>`:''}
+    ${o.cantidadRecibida!==null?`<div class="info-item"><label>Cantidad Recibida</label><span>${escHtml(o.cantidadRecibida)}</span></div>`:''}
+    <div class="info-item"><label>Creado</label><span>${o.fechaPedido} ${o.horaPedido} por ${escHtml(o.usuarioCreador)}</span></div>
   </div>`;
 }
 
@@ -2381,21 +2411,21 @@ function showDetalle(id){
       ${o.camioneta?'&nbsp;<span class="badge badge-camioneta">Camioneta</span>':''}
     </div>
     <div class="info-grid" style="gap:12px">
-      <div class="info-item"><label>C\u00f3digo</label><span style="font-family:DM Mono,monospace">${o.codigo}</span></div>
-      <div class="info-item"><label>Descripci\u00f3n</label><span>${o.descripcion}</span></div>
-      <div class="info-item"><label>Cantidad Pedida</label><span>${o.cantidadPedida}</span></div>
+      <div class="info-item"><label>C\u00f3digo</label><span style="font-family:DM Mono,monospace">${escHtml(o.codigo)}</span></div>
+      <div class="info-item"><label>Descripci\u00f3n</label><span>${escHtml(o.descripcion)}</span></div>
+      <div class="info-item"><label>Cantidad Pedida</label><span>${escHtml(o.cantidadPedida)}</span></div>
       <div class="info-item"><label>Cantidad Enviada</label><span>${o.cantidadEnviada!==null?o.cantidadEnviada:'\u2014'}</span></div>
       <div class="info-item"><label>Cantidad Recibida</label><span>${o.cantidadRecibida!==null?o.cantidadRecibida:'\u2014'}</span></div>
-      <div class="info-item"><label>Creador</label><span>${o.usuarioCreador}${o.sucursalCreador?' ('+o.sucursalCreador+')':''}</span></div>
+      <div class="info-item"><label>Creador</label><span>${escHtml(o.usuarioCreador)}${o.sucursalCreador?' ('+o.sucursalCreador+')':''}</span></div>
       <div class="info-item"><label>Fecha Pedido</label><span>${o.fechaPedido} ${o.horaPedido}</span></div>
       <div class="info-item"><label>Fecha Env\u00edo</label><span>${o.fechaEnvio?o.fechaEnvio+' '+o.horaEnvio+' \u2014 '+o.usuarioEnvio:'\u2014'}</span></div>
-      ${o.preparadoPor?`<div class="info-item"><label>Preparado por</label><span>${o.preparadoPor}</span></div>`:''}
-      ${o.recibidoPor?`<div class="info-item"><label>Recibido por</label><span>${o.recibidoPor}</span></div>`:''}
+      ${o.preparadoPor?`<div class="info-item"><label>Preparado por</label><span>${escHtml(o.preparadoPor)}</span></div>`:''}
+      ${o.recibidoPor?`<div class="info-item"><label>Recibido por</label><span>${escHtml(o.recibidoPor)}</span></div>`:''}
       <div class="info-item"><label>Fecha Recepci\u00f3n</label><span>${o.fechaRecepcion?o.fechaRecepcion+' '+o.horaRecepcion+' \u2014 '+o.usuarioRecepcion:'\u2014'}</span></div>
     </div>
-    ${o.observacionesPedido?`<div class="divider"></div><div class="info-item"><label>Obs. Pedido</label><span>${o.observacionesPedido}</span></div>`:''}
-    ${o.observacionesEnvio?`<div style="margin-top:8px" class="info-item"><label>Obs. Env\u00edo</label><span>${o.observacionesEnvio}</span></div>`:''}
-    ${o.observacionesRecepcion?`<div style="margin-top:8px" class="info-item"><label>Obs. Recepci\u00f3n</label><span>${o.observacionesRecepcion}</span></div>`:''}
+    ${o.observacionesPedido?`<div class="divider"></div><div class="info-item"><label>Obs. Pedido</label><span>${escHtml(o.observacionesPedido)}</span></div>`:''}
+    ${o.observacionesEnvio?`<div style="margin-top:8px" class="info-item"><label>Obs. Env\u00edo</label><span>${escHtml(o.observacionesEnvio)}</span></div>`:''}
+    ${o.observacionesRecepcion?`<div style="margin-top:8px" class="info-item"><label>Obs. Recepci\u00f3n</label><span>${escHtml(o.observacionesRecepcion)}</span></div>`:''}
   `;
   openModal('modal-detalle');
 }
@@ -2479,9 +2509,9 @@ function renderRecibir(){
         <div style="padding:18px 20px;background:var(--goma-blue);border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <!-- Izquierda: código · descripción · badge (mismo renglón) -->
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;flex-wrap:wrap">
-            <span style="font-size:22px;font-weight:800;color:#fff;white-space:nowrap">${o.codigo}</span>
+            <span style="font-size:22px;font-weight:800;color:#fff;white-space:nowrap">${escHtml(o.codigo)}</span>
             <span style="color:rgba(255,255,255,0.4);font-size:18px">·</span>
-            <span style="font-size:17px;color:rgba(255,255,255,0.92);font-weight:600;flex:1">${o.descripcion}</span>
+            <span style="font-size:17px;color:rgba(255,255,255,0.92);font-weight:600;flex:1">${escHtml(o.descripcion)}</span>
             ${o.urgente?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:4px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;white-space:nowrap">⚡ Urgente / Vendido</span>':''}
             ${o.camioneta?'<span style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.5);padding:4px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;white-space:nowrap">📦 Stock</span>':''}
           </div>
@@ -2499,7 +2529,7 @@ function renderRecibir(){
             <!-- Solicitada -->
             <div style="background:var(--goma-blue-pale);border-radius:var(--radius-lg);padding:14px;text-align:center">
               <div style="font-size:10px;font-weight:700;color:var(--goma-blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Cant. Solicitada</div>
-              <div style="font-size:32px;font-weight:800;color:var(--goma-blue);line-height:1">${o.cantidadPedida}</div>
+              <div style="font-size:32px;font-weight:800;color:var(--goma-blue);line-height:1">${escHtml(o.cantidadPedida)}</div>
             </div>
             <!-- Enviada -->
             <div style="background:var(--info-bg);border-radius:var(--radius-lg);padding:14px;text-align:center">
@@ -2532,7 +2562,7 @@ function renderRecibir(){
             </div>
           </div>
 
-          ${o.observacionesEnvio?`<div style="padding:8px 12px;background:var(--warning-bg);border-radius:var(--radius);font-size:12px;color:var(--warning);margin-bottom:12px"><strong>Obs. envío:</strong> ${o.observacionesEnvio}</div>`:''}
+          ${o.observacionesEnvio?`<div style="padding:8px 12px;background:var(--warning-bg);border-radius:var(--radius);font-size:12px;color:var(--warning);margin-bottom:12px"><strong>Obs. envío:</strong> ${escHtml(o.observacionesEnvio)}</div>`:''}
 
           <!-- Botones de acción rápida -->
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -2699,12 +2729,12 @@ function renderHistorial(){
       <td style="white-space:nowrap">${fechaMostrar}<br><span style="font-size:11px;color:var(--text-muted)">${horaMostrar}</span></td>
       <td><span class="dir-badge">${o.direccion}</span></td>
       <td>${statusBadge(o.estado)}</td>
-      <td style="font-family:DM Mono,monospace;font-size:12px;font-weight:600">${o.codigo}</td>
-      <td class="wrap-text">${o.descripcion}</td>
-      <td style="text-align:center">${o.cantidadPedida}</td>
+      <td style="font-family:DM Mono,monospace;font-size:12px;font-weight:600">${escHtml(o.codigo)}</td>
+      <td class="wrap-text">${escHtml(o.descripcion)}</td>
+      <td style="text-align:center">${escHtml(o.cantidadPedida)}</td>
       <td style="text-align:center;font-weight:700;color:var(--info)">${o.cantidadEnviada!==null&&o.cantidadEnviada!==undefined?o.cantidadEnviada:'\u2014'}</td>
       <td style="text-align:center;font-weight:700;color:var(--success)">${o.cantidadRecibida!==null&&o.cantidadRecibida!==undefined?o.cantidadRecibida:'\u2014'}</td>
-      <td class="wrap-text" style="font-size:12px;color:var(--text-muted)">${obsMostrar}</td>
+      <td class="wrap-text" style="font-size:12px;color:var(--text-muted)">${escHtml(obsMostrar)}</td>
       <td style="font-size:12px">${o.usuarioCreador||'\u2014'}</td>
       <td style="font-size:12px;font-weight:600;color:var(--primary)">${o.preparadoPor||'\u2014'}</td>
       <td style="font-size:12px;font-weight:600;color:var(--success)">${o.recibidoPor||'\u2014'}</td>
@@ -2955,7 +2985,7 @@ async function renderUsers(){
   }
   body.innerHTML=users.map(u=>`
     <tr>
-      <td><strong>${u.username}</strong></td>
+      <td><strong>${escHtml(u.username)}</strong></td>
       <td>${u.sucursal||'\u2014'}</td>
       <td>${u.rol==='ADMIN'?'<span class="badge badge-admin">ADMIN</span>':'<span class="badge badge-user">USER</span>'}</td>
       <td>
@@ -3007,7 +3037,7 @@ async function saveUser(){
 
 async function deleteUserAction(id){
   const u=_cache.users.find(x=>x.id===id);
-  if(!u||!confirm(`\u00bfEliminar el usuario "${u.username}"?`)) return;
+  if(!u||!confirm(`\u00bfEliminar el usuario "${escHtml(u.username)}"?`)) return;
   await DB.deleteUser(id);
   renderUsers();
 }
@@ -3146,8 +3176,8 @@ async function autoRefresh(){
   if(!activePage) return;
 
   try {
-    const prevCount = _prevOrderCount;
-    const orders = await DB._req('gomatex_orders?select=*&order=fechapedido.desc,horapedido.desc');
+    const idsPrevios = window._idsVistos || null;
+    const orders = await DB._req(ordersQuery());
 
     // Protección: solo actualizar cache si la respuesta es válida y tiene datos coherentes
     // Si devuelve menos pedidos que antes sin que el usuario haya borrado, puede ser error de red
@@ -3164,10 +3194,11 @@ async function autoRefresh(){
 
     _cache.orders = orders.map(o => DB._order(o));
     const newCount = _cache.orders.length;
+    const nuevos = idsPrevios ? _cache.orders.filter(o => !idsPrevios.has(o.id)) : [];
 
     // Alerta de nuevo pedido (solo si ya había datos cargados antes)
-    if(prevCount > 0 && newCount > prevCount){
-      const diff = newCount - prevCount;
+    if(idsPrevios && nuevos.length){
+      const diff = nuevos.length;
       showToast(`\uD83D\uDD14 ${diff} nuevo${diff>1?'s':''} pedido${diff>1?'s':''} recibido${diff>1?'s':''}`, 'info', 6000);
       // Sonido simple
       try {
@@ -3185,6 +3216,7 @@ async function autoRefresh(){
       } catch(e){}
     }
     _prevOrderCount = newCount;
+    window._idsVistos = new Set(_cache.orders.map(o => o.id));
 
     const pageId = activePage.id;
     if(pageId === 'page-inicio') renderInicio();
@@ -3192,7 +3224,23 @@ async function autoRefresh(){
     if(pageId === 'page-recibir') renderRecibir();
   } catch(e){ /* fallo silencioso */ }
 }
-let _refreshInterval = setInterval(autoRefresh, 10000);
+// ═══════════════════════════════════════════
+//  REALTIME: los cambios de la otra sucursal llegan al instante por
+//  websocket (no gasta cuota de transferencia). El polling queda solo
+//  de respaldo por si el websocket se cae.
+// ═══════════════════════════════════════════
+let _rtCanal = null;
+function initRealtime(){
+  try{
+    if(_rtCanal || !window.supabase) return;
+    const cli = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    _rtCanal = cli.channel('gomatex-orders-live')
+      .on('postgres_changes', {event:'*', schema:'public', table:'gomatex_orders'}, () => autoRefresh())
+      .subscribe();
+  }catch(e){ /* si falla, sigue funcionando el polling de respaldo */ }
+}
+initRealtime();
+let _refreshInterval = setInterval(autoRefresh, 120000);
 
 // Pausar auto-refresh cuando la pestaña está en segundo plano
 document.addEventListener('visibilitychange', () => {
@@ -3201,7 +3249,8 @@ document.addEventListener('visibilitychange', () => {
   } else {
     // Reanudar y hacer refresh inmediato al volver
     autoRefresh();
-    _refreshInterval = setInterval(autoRefresh, 10000);
+    _refreshInterval = setInterval(autoRefresh, 120000);
+    initRealtime();
   }
 });
 
@@ -3384,7 +3433,7 @@ function renderMetricas(){
   destroyChart('articulos');
   const artMap = {};
   orders.forEach(o => {
-    const key = `${o.codigo} · ${o.descripcion}`;
+    const key = `${escHtml(o.codigo)} · ${escHtml(o.descripcion)}`;
     const qty = parseFloat(o.cantidadPedida);
     artMap[key] = (artMap[key]||0) + (isNaN(qty) ? 1 : qty);
   });
@@ -3547,12 +3596,12 @@ function renderBorrarLista(){
       <input type="checkbox" id="chk-${o.id}" data-id="${o.id}" class="borrar-chk" onchange="actualizarContadorBorrar()"
         style="width:18px;height:18px;accent-color:var(--danger);cursor:pointer;flex-shrink:0">
       <label for="chk-${o.id}" style="flex:1;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--primary);min-width:80px">${o.codigo}</span>
-        <span style="font-size:13px;color:var(--text-mid);flex:1">${o.descripcion}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--primary);min-width:80px">${escHtml(o.codigo)}</span>
+        <span style="font-size:13px;color:var(--text-mid);flex:1">${escHtml(o.descripcion)}</span>
         <span class="dir-badge" style="font-size:10px">${o.direccion}</span>
         <span style="font-size:11px;font-weight:700;color:${estadoColor}">${o.estado}</span>
         <span style="font-size:11px;color:var(--text-muted)">${o.fechaPedido} ${o.horaPedido}</span>
-        <span style="font-size:11px;color:var(--text-muted)">por ${o.usuarioCreador}</span>
+        <span style="font-size:11px;color:var(--text-muted)">por ${escHtml(o.usuarioCreador)}</span>
       </label>
     </div>`;
   }).join('');
@@ -3721,6 +3770,29 @@ document.addEventListener('DOMContentLoaded', function(){
 //  BOOT
 // ═══════════════════════════════════════════
 init();
+
+// ═══════════════════════════════════════════
+//  ANTI DOBLE-CLIC
+//  Envuelve todas las operaciones que escriben en la base para que un
+//  doble clic (o un clic impaciente con conexión lenta) no duplique
+//  pedidos ni dispare la misma operación dos veces.
+// ═══════════════════════════════════════════
+(function(){
+  const protegidas = ['savePedido','confirmEnvio','confirmRecepcion','confirmarEnvioRuta',
+    'confirmarRecepcionDirecta','saveProduct','saveUser','doImport',
+    'borrarSeleccionados','borrarPedidoDesdeDetalle','deleteUserAction','deleteProductAction','doLogin'];
+  window._busyOps = window._busyOps || new Set();
+  protegidas.forEach(function(n){
+    const orig = window[n];
+    if(typeof orig !== 'function') return;
+    window[n] = async function(){
+      if(window._busyOps.has(n)) return;
+      window._busyOps.add(n);
+      try { return await orig.apply(this, arguments); }
+      finally { window._busyOps.delete(n); }
+    };
+  });
+})();
 </script>
 </body>
 </html>
