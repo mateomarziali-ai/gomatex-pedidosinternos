@@ -688,6 +688,15 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 #print-area{display:none}
+
+/* ═══ Pestañas principales INICIOS / ENVÍOS ═══ */
+.main-tabs{display:flex;gap:8px;padding:10px 16px 0;background:var(--bg,#F4F5FA)}
+.main-tab{flex:1;max-width:420px;border:none;border-radius:12px 12px 0 0;padding:13px 10px;
+  font-family:Nunito,sans-serif;font-weight:800;font-size:15.5px;letter-spacing:.5px;cursor:pointer;
+  background:#E3E5F2;color:#666B8A;display:flex;align-items:center;justify-content:center;gap:8px}
+.main-tab.active{background:var(--goma-blue,#1D2769);color:#fff}
+.main-tab span{font-weight:600;font-size:11.5px;opacity:.85}
+@media(max-width:600px){.main-tab{font-size:13.5px;padding:11px 6px}}
 </style>
 </head>
 <body>
@@ -781,6 +790,11 @@ table tbody td.wrap-text{white-space:normal;min-width:120px}
       <div class="topbar-right">
         <span class="topbar-badge" id="tb-sucursal"></span>
       </div>
+    </div>
+    <!-- ═══ PESTAÑAS PRINCIPALES: INICIOS | ENVÍOS ═══ -->
+    <div class="main-tabs">
+      <button class="main-tab active" id="mtab-inicio" onclick="navigate('inicio')">📋 INICIOS</button>
+      <button class="main-tab" id="mtab-envios" onclick="navigate('historial')">🚚 ENVÍOS <span id="mtab-envios-fecha"></span></button>
     </div>
     <div id="content">
 
@@ -1746,7 +1760,7 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════════
-const PAGE_TITLES = {inicio:'Inicio',historial:'Historial de Pedido',articulos:'Artículos / Excel',usuarios:'Usuarios',recibir:'Recibir Mercadería',metricas:'Métricas y Estadísticas'};
+const PAGE_TITLES = {inicio:'Inicio',historial:'ENV\u00cdOS',articulos:'Artículos / Excel',usuarios:'Usuarios',recibir:'Recibir Mercadería',metricas:'Métricas y Estadísticas'};
 
 function navigateHistorial(tipo){
   // Activar página
@@ -1802,6 +1816,12 @@ function navigate(page){
   const ni = document.querySelector(`.nav-item[data-page="${page}"]`);
   if(ni) ni.classList.add('active');
   document.getElementById('topbar-title').textContent = PAGE_TITLES[page] || page;
+  // sincronizar pestañas principales
+  const mtI = document.getElementById('mtab-inicio'), mtE = document.getElementById('mtab-envios');
+  if(mtI && mtE){
+    mtI.classList.toggle('active', page === 'inicio');
+    mtE.classList.toggle('active', page === 'historial');
+  }
   const content = document.getElementById('content');
   if(content) content.scrollTop = 0;
   closeSidebar();
@@ -1814,10 +1834,12 @@ function navigate(page){
     const hTipo = document.getElementById('h-tipo');
     if(hFecha) hFecha.value = today;
     if(hTipo) hTipo.value = 'enviado'; // por defecto: enviados
-    if(hDir){
-      if(session.sucursal === 'Trelew') hDir.value = 'Trelew\u2192Madryn';
-      else if(session.sucursal === 'Madryn') hDir.value = 'Madryn\u2192Trelew';
-      else hDir.value = '';
+    if(hDir) hDir.value = '';   // sin filtro: la tabla se segmenta por sucursal
+    // título dinámico: ENVÍOS — [día de hoy]
+    const tEl = document.getElementById('historial-title');
+    if(tEl){
+      const f = new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      tEl.textContent = 'ENVÍOS — ' + f.charAt(0).toUpperCase() + f.slice(1);
     }
     renderHistorial();
   }
@@ -2037,11 +2059,11 @@ function renderDirBlock(id, dir, orders, session){
       ? '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">' +
           '<div style="display:flex;flex-direction:column;align-items:center">' +
             '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Env.</span>' +
-            '<input type="text" id="inline-qty-' + o.id + '" placeholder="—"' +
+            '<input type="text" id="inline-qty-' + o.id + '" value="' + escHtml(o.cantidadPedida) + '" placeholder="—"' +
               ' style="width:54px;font-size:16px;font-weight:800;text-align:center;border:1.5px solid var(--border);border-radius:6px;padding:2px 4px;color:var(--goma-blue);background:#fff;font-family:Nunito,sans-serif"' +
               ' onclick="event.stopPropagation()">' +
           '</div>' +
-          '<button class="btn btn-xs btn-primary" style="padding:5px 12px;align-self:flex-end" onclick="enviarDesdeCard(\'' + o.id + '\')">Enviar</button>' +
+          '<button class="btn btn-xs btn-primary" style="padding:5px 12px;align-self:flex-end" onclick="enviarDesdeCard(\'' + o.id + '\')">\u2713 Completar</button>' +
         '</div>'
       : '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + statusBadge(o.estado) + '</span>';
 
@@ -2049,12 +2071,12 @@ function renderDirBlock(id, dir, orders, session){
 
       // Renglón 1: código · descripción · cant. solicitada · input env. · botón enviar
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
-        '<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:var(--goma-blue);flex-shrink:0">' + o.codigo + '</span>' +
+        '<span style="font-family:DM Mono,monospace;font-size:13px;font-weight:700;color:var(--goma-blue);flex-shrink:0">' + escHtml(o.codigo) + '</span>' +
         '<span style="color:var(--text-light);flex-shrink:0">&middot;</span>' +
-        '<span style="font-size:13px;color:var(--text-mid);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + o.descripcion + '</span>' +
+        '<span style="font-size:13px;color:var(--text-mid);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(o.descripcion) + '</span>' +
         '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' +
           '<span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Sol.</span>' +
-          '<span style="font-size:17px;font-weight:800;color:var(--goma-blue);line-height:1.1">' + o.cantidadPedida + '</span>' +
+          '<span style="font-size:17px;font-weight:800;color:var(--goma-blue);line-height:1.1">' + escHtml(o.cantidadPedida) + '</span>' +
         '</div>' +
         sendSection +
       '</div>' +
@@ -2062,7 +2084,7 @@ function renderDirBlock(id, dir, orders, session){
       // Renglón 2: condición + quién solicitó
       '<div style="display:flex;align-items:center;gap:8px">' +
         (condicion ? '<span style="background:'+condBg+';color:'+condColor+';padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase">'+condicion+'</span>' : '') +
-        '<span style="font-size:11px;color:var(--text-muted)">Solicit\u00f3: <strong style="color:var(--text-mid)">' + o.usuarioCreador + '</strong> &middot; ' + o.horaPedido + '</span>' +
+        '<span style="font-size:11px;color:var(--text-muted)">Solicit\u00f3: <strong style="color:var(--text-mid)">' + escHtml(o.usuarioCreador) + '</strong> &middot; ' + escHtml(o.horaPedido) + '</span>' +
       '</div>' +
 
     '</div>';
@@ -2244,7 +2266,7 @@ async function confirmarEnvioRuta(id){
     }
     if(obsInput) obsInput.style.border = '';
     const diff = (!isNaN(cantNum)&&!isNaN(pedNum)) ? ' (diferencia: '+(cantNum-pedNum)+')' : '';
-    const nota = 'Solicitado: ' + o.cantidadPedida + ' / Enviado: ' + cant + diff;
+    const nota = 'Solicitado: ' + escHtml(o.cantidadPedida) + ' / Enviado: ' + cant + diff;
     obs = obs + ' | ' + nota;
     showToast('\u26a0\ufe0f Env\u00edo registrado con diferencia', 'warning', 4000);
   }
@@ -2279,7 +2301,7 @@ function openEnviar(id){
   if(prepInput) prepInput.value = session.username || '';
   document.getElementById('env-cantidad').value = '';
   document.getElementById('env-obs').value = '';
-  document.getElementById('env-max-hint').textContent = 'Solicitado: ' + o.cantidadPedida + '. Pod\u00e9s enviar m\u00e1s o menos.';
+  document.getElementById('env-max-hint').textContent = 'Solicitado: ' + escHtml(o.cantidadPedida) + '. Pod\u00e9s enviar m\u00e1s o menos.';
   const cantSol = document.getElementById('env-cant-solicitada');
   if(cantSol) cantSol.textContent = o.cantidadPedida;
   document.getElementById('env-order-info').innerHTML = orderInfoBlock(o);
@@ -2323,7 +2345,7 @@ async function confirmEnvio(){
     }
     if(obsEl) obsEl.style.border = '';
     const diff = (!isNaN(cantNum)&&!isNaN(pedNum)) ? ' (diferencia: '+(cantNum-pedNum)+')' : '';
-    const nota = 'Cantidad solicitada: ' + o.cantidadPedida + ' / Cantidad enviada: ' + cant + diff;
+    const nota = 'Cantidad solicitada: ' + escHtml(o.cantidadPedida) + ' / Cantidad enviada: ' + cant + diff;
     obs = obs + ' | ' + nota;
     showToast('\u26a0\ufe0f Env\u00edo registrado con diferencia', 'warning', 4000);
   }
@@ -2414,8 +2436,8 @@ function showDetalle(id){
       <div class="info-item"><label>C\u00f3digo</label><span style="font-family:DM Mono,monospace">${escHtml(o.codigo)}</span></div>
       <div class="info-item"><label>Descripci\u00f3n</label><span>${escHtml(o.descripcion)}</span></div>
       <div class="info-item"><label>Cantidad Pedida</label><span>${escHtml(o.cantidadPedida)}</span></div>
-      <div class="info-item"><label>Cantidad Enviada</label><span>${o.cantidadEnviada!==null?o.cantidadEnviada:'\u2014'}</span></div>
-      <div class="info-item"><label>Cantidad Recibida</label><span>${o.cantidadRecibida!==null?o.cantidadRecibida:'\u2014'}</span></div>
+      <div class="info-item"><label>Cantidad Enviada</label><span>${o.cantidadEnviada!==null?escHtml(o.cantidadEnviada):'\u2014'}</span></div>
+      <div class="info-item"><label>Cantidad Recibida</label><span>${o.cantidadRecibida!==null?escHtml(o.cantidadRecibida):'\u2014'}</span></div>
       <div class="info-item"><label>Creador</label><span>${escHtml(o.usuarioCreador)}${o.sucursalCreador?' ('+o.sucursalCreador+')':''}</span></div>
       <div class="info-item"><label>Fecha Pedido</label><span>${o.fechaPedido} ${o.horaPedido}</span></div>
       <div class="info-item"><label>Fecha Env\u00edo</label><span>${o.fechaEnvio?o.fechaEnvio+' '+o.horaEnvio+' \u2014 '+o.usuarioEnvio:'\u2014'}</span></div>
@@ -2716,7 +2738,30 @@ function renderHistorial(){
     return;
   }
 
-  body.innerHTML=orders.map(o=>{
+  // Segmentación visual por sucursal de origen (cuando se ven ambas rutas)
+  const segmentar = !dir;
+  const filaSeg = (titulo) =>
+    `<tr><td colspan="14" style="background:var(--goma-blue,#1D2769);color:#fff;font-weight:800;
+      letter-spacing:1px;font-size:12.5px;padding:7px 12px">${titulo}</td></tr>`;
+  if(segmentar){
+    const session2 = currentSession();
+    const grupos = [
+      {dir:'Trelew\u2192Madryn', titulo:'\uD83C\uDFE2 SALE DE TRELEW \u2192 LLEGA A MADRYN'},
+      {dir:'Madryn\u2192Trelew', titulo:'\uD83C\uDFE2 SALE DE MADRYN \u2192 LLEGA A TRELEW'}
+    ];
+    // la sucursal del usuario primero
+    if(session2.sucursal === 'Madryn') grupos.reverse();
+    body.innerHTML = grupos.map(g => {
+      const lista = orders.filter(o => o.direccion === g.dir);
+      if(!lista.length) return '';
+      return filaSeg(g.titulo + ' \u00b7 ' + lista.length) + lista.map(filaHistorial).join('');
+    }).join('') || `<tr><td colspan="14" style="text-align:center;padding:28px;color:var(--text-muted)">Sin pedidos para mostrar</td></tr>`;
+    return;
+  }
+  body.innerHTML=orders.map(filaHistorial).join('');
+}
+
+function filaHistorial(o){
     const esRecibido = o.estado==='RECIBIDO'||o.estado==='RECIBIDO CON DIFERENCIA';
     const fechaMostrar = esRecibido ? (o.fechaRecepcion||o.fechaPedido) : (o.fechaEnvio||o.fechaPedido);
     const horaMostrar = esRecibido ? (o.horaRecepcion||o.horaPedido) : (o.horaEnvio||o.horaPedido);
@@ -2732,12 +2777,12 @@ function renderHistorial(){
       <td style="font-family:DM Mono,monospace;font-size:12px;font-weight:600">${escHtml(o.codigo)}</td>
       <td class="wrap-text">${escHtml(o.descripcion)}</td>
       <td style="text-align:center">${escHtml(o.cantidadPedida)}</td>
-      <td style="text-align:center;font-weight:700;color:var(--info)">${o.cantidadEnviada!==null&&o.cantidadEnviada!==undefined?o.cantidadEnviada:'\u2014'}</td>
-      <td style="text-align:center;font-weight:700;color:var(--success)">${o.cantidadRecibida!==null&&o.cantidadRecibida!==undefined?o.cantidadRecibida:'\u2014'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--info)">${o.cantidadEnviada!==null&&o.cantidadEnviada!==undefined?escHtml(o.cantidadEnviada):'\u2014'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--success)">${o.cantidadRecibida!==null&&o.cantidadRecibida!==undefined?escHtml(o.cantidadRecibida):'\u2014'}</td>
       <td class="wrap-text" style="font-size:12px;color:var(--text-muted)">${escHtml(obsMostrar)}</td>
-      <td style="font-size:12px">${o.usuarioCreador||'\u2014'}</td>
-      <td style="font-size:12px;font-weight:600;color:var(--primary)">${o.preparadoPor||'\u2014'}</td>
-      <td style="font-size:12px;font-weight:600;color:var(--success)">${o.recibidoPor||'\u2014'}</td>
+      <td style="font-size:12px">${escHtml(o.usuarioCreador||'\u2014')}</td>
+      <td style="font-size:12px;font-weight:600;color:var(--primary)">${escHtml(o.preparadoPor||'\u2014')}</td>
+      <td style="font-size:12px;font-weight:600;color:var(--success)">${escHtml(o.recibidoPor||'\u2014')}</td>
       <td style="text-align:center">
         ${(o.estado==='RECIBIDO CON DIFERENCIA')
           ? `<label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
@@ -2749,7 +2794,6 @@ function renderHistorial(){
       </td>
       <td><button class="btn btn-xs btn-secondary" onclick="showDetalle('${o.id}')">Ver</button></td>
     </tr>`;
-  }).join('');
 }
 
 // ═══════════════════════════════════════════
@@ -2814,9 +2858,9 @@ function renderProducts(){
   list.innerHTML = slice.map(p => {
     const code = escHtml(p.codigo);
     return '<div class="product-item">' +
-      '<div><span class="pi-code">' + p.codigo + '</span>' +
+      '<div><span class="pi-code">' + escHtml(p.codigo) + '</span>' +
       '<span style="color:var(--text-light);margin:0 8px">\u00b7</span>' +
-      '<span class="pi-desc">' + p.descripcion + '</span></div>' +
+      '<span class="pi-desc">' + escHtml(p.descripcion) + '</span></div>' +
       '<div class="pi-actions">' +
       (isAdmin ?
         '<button class="btn btn-xs btn-secondary" onclick="openEditProduct(\'' + code + '\')">Editar</button> ' +
@@ -3121,9 +3165,9 @@ function imprimirDia(){
   orders.forEach(function(o, i){
     var bg = i%2===0 ? '' : 'background:#f5f5f5';
     html += '<tr style="border-bottom:1px solid #ddd;' + bg + '">';
-    html += '<td style="padding:9px 8px;font-weight:700;font-size:13px">' + o.codigo + '</td>';
-    html += '<td style="padding:9px 8px;font-size:13px">' + o.descripcion + '</td>';
-    html += '<td style="padding:9px 8px;font-size:18px;font-weight:900;text-align:center">' + o.cantidadPedida + '</td>';
+    html += '<td style="padding:9px 8px;font-weight:700;font-size:13px">' + escHtml(o.codigo) + '</td>';
+    html += '<td style="padding:9px 8px;font-size:13px">' + escHtml(o.descripcion) + '</td>';
+    html += '<td style="padding:9px 8px;font-size:18px;font-weight:900;text-align:center">' + escHtml(o.cantidadPedida) + '</td>';
     html += '<td style="padding:9px 8px;font-size:18px;font-weight:900;text-align:center;color:#555">' + (o.cantidadEnviada!=null&&o.cantidadEnviada!==''?o.cantidadEnviada:'&nbsp;') + '</td>';
     html += '</tr>';
   });
