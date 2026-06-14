@@ -415,8 +415,8 @@ const LOGO_DATA = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/7QAsUGhvdG
 /* ============================================================
    CONFIG SUPABASE  —  completá con tus credenciales reales
    ============================================================ */
-const SUPABASE_URL  = "TU_SUPABASE_URL";
-const SUPABASE_ANON  = "TU_SUPABASE_ANON_KEY";
+const SUPABASE_URL  = "https://xslejalhhgjoqfdmrnnf.supabase.co";
+const SUPABASE_ANON  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzbGVqYWxoaGdqb3FmZG1ybm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTQyMTAsImV4cCI6MjA5MzIzMDIxMH0.JenfQHW77rg9auL8jbjjTpiScXYbTUkBdBMs4TFfaUU";
 
 let sb = null;
 let DEMO = true;
@@ -466,6 +466,7 @@ let recvSucursal = null; // sucursal a recibir (solo admin la cambia)
 let autoRefreshT = null;
 let realtimeChannel = null;
 let refreshBusy = false;
+let audioCtx = null;
 
 /* ============================================================
    CONFIG DE RUTAS POR CIUDAD DEL USUARIO  (Reglas de negocio)
@@ -736,6 +737,7 @@ function startApp(){
   document.getElementById("uAvatar").textContent = me.nombre.charAt(0).toUpperCase();
   // ruta por defecto según ciudad/rol (Regla 1)
   np.ruta = userRouteConfig(me).defaultRoute;
+  requestNotifyPermission();
   buildNav();
   go("pedidos");
   startAutoRefresh();
@@ -827,8 +829,13 @@ function startRealtime(){
   if(DEMO || !sb || realtimeChannel) return;
   try{
     realtimeChannel = sb.channel("gomatex-pedidos-live")
-      .on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},()=>softRefresh())
-      .subscribe();
+      .on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},payload=>{
+        handleRealtimePedido(payload);
+        softRefresh();
+      })
+      .subscribe(status=>{
+        if(status==="SUBSCRIBED") console.log("Gomatex realtime activo");
+      });
   }catch(e){
     console.warn("Realtime no disponible", e);
   }
@@ -838,6 +845,47 @@ function stopRealtime(){
     try{ sb.removeChannel(realtimeChannel); }catch(e){}
   }
   realtimeChannel = null;
+}
+function requestNotifyPermission(){
+  if("Notification" in window && Notification.permission==="default"){
+    try{ Notification.requestPermission(); }catch(e){}
+  }
+}
+function beep(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state==="suspended") audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.18,audioCtx.currentTime+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.32);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime+0.35);
+  }catch(e){}
+}
+function notifyUser(title, body){
+  toast(title,"ok");
+  beep();
+  if("Notification" in window && Notification.permission==="granted"){
+    try{ new Notification(title,{body}); }catch(e){}
+  }
+}
+function handleRealtimePedido(payload){
+  if(!me || !payload || !payload.new) return;
+  const o = payload.new;
+  if(o.usuario_carga===me.usuario) return;
+  if(payload.eventType==="INSERT" && o.estado==="Pendiente" && puedePreparar(o,me)){
+    notifyUser("Nuevo pedido para preparar", `${o.ruta} · ${o.codigo} · ${o.cantidad_pedida}`);
+  }
+  if(payload.eventType==="UPDATE" && o.estado==="Enviado" && o.cantidad_recibida==null){
+    const suc = me.rol==="admin" ? rutaDestino(o.ruta) : me.sucursal;
+    if(me.rol==="admin" || rutaDestino(o.ruta)===suc){
+      notifyUser("Mercadería para recibir", `${o.ruta} · ${o.codigo} · enviado ${o.cantidad_enviada}`);
+    }
+  }
 }
 function closeMobileMenu(){
   document.getElementById("sidebar").classList.remove("mobile-open");
